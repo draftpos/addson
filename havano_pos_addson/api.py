@@ -110,3 +110,18 @@ def get_items_by_group(item_group=None, page=0, page_size=20):
             "error": str(e)
         }
 
+
+
+
+@frappe.whitelist()
+def get_default_company():
+    print("-------------company-------------------------------")
+    """
+    Returns the default company for the current site or user
+    """
+    try:
+        company = frappe.defaults.get_user_default("Company") or frappe.defaults.get_global_default("default_company")
+        return {"company_name": company}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Default Company Error")
+        return {"company_name": ""}
