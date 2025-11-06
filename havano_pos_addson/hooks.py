@@ -3,7 +3,7 @@ app_title = "Havano Pos Addson"
 app_publisher = "showline"
 app_description = "addson of the havano pos"
 app_email = "wisdommapeka@gmail.com"
-app_license = "mit"
+app_license = "mits"
 
 # Apps
 # ------------------
@@ -57,12 +57,12 @@ app_license = "mit"
 # ----------
 
 # application home page (will override Website Settings)
-# home_page = "login"
+home_page = "havano-pos-touch-ui.html"
 
 # website user home page (by Role)
 # role_home_page = {
 # 	"Role": "home_page"
-# }
+# }s
 
 # Generators
 # ----------
