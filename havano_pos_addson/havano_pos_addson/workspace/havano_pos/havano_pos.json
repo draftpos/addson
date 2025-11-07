@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Havano POS",
  "links": [],
- "modified": "2025-10-12 10:02:03.556881",
+ "modified": "2025-11-06 11:47:23.779462",
  "modified_by": "Administrator",
  "module": "Havano Pos Addson",
  "name": "Havano POS",
@@ -35,6 +35,14 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Ha Pos Setting",
+   "link_to": "HA POS Setting",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Sales Invoice",
    "link_to": "Sales Invoice",
    "stats_filter": "[]",
@@ -45,14 +53,6 @@
    "doc_view": "List",
    "label": "Havano Pos Shift",
    "link_to": "Havano POS Shift",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Ha Pos Setting",
-   "link_to": "HA POS Setting",
    "stats_filter": "[]",
    "type": "DocType"
   },

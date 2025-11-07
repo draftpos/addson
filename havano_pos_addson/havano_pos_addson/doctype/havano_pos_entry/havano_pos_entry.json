@@ -8,6 +8,10 @@
   "invoice_number",
   "invoice_date",
   "payment_method",
+  "exchange_rate",
+  "customer",
+  "payment_mode",
+  "account",
   "column_break_ykjb",
   "amount",
   "currency",
@@ -54,17 +58,17 @@
    "options": "Currency"
   },
   {
+   "description": "Amount in base currency",
    "fieldname": "base_amount",
    "fieldtype": "Float",
-   "label": "Base Amount",
-   "description": "Amount in base currency"
+   "label": "Base Amount"
   },
   {
+   "description": "The base/default currency",
    "fieldname": "base_currency",
    "fieldtype": "Link",
    "label": "Base Currency",
-   "options": "Currency",
-   "description": "The base/default currency"
+   "options": "Currency"
   },
   {
    "fieldname": "shift_name",
@@ -86,11 +90,31 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "exchange_rate",
+   "fieldtype": "Data",
+   "label": "Exchange Rate"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "payment_mode",
+   "fieldtype": "Data",
+   "label": "Payment Mode"
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Data",
+   "label": "Account"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-29 23:50:07.153632",
+ "modified": "2025-11-07 12:04:15.350274",
  "modified_by": "Administrator",
  "module": "Havano Pos Addson",
  "name": "Havano POS Entry",

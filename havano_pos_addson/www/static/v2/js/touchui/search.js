@@ -1,15 +1,8 @@
 // Search items with type parameter (code or name)
 function searchItems(searchTerm, searchType = 'name') {
     frappe.call({
-        method: "frappe.client.get_list",
-        args: {
-            doctype: "Item",
-            fields: ["name", "item_name", "description", "stock_uom", "valuation_rate"],
-            filters: searchType === 'code' ? 
-                {"name": ["like", `%${searchTerm}%`]} :
-                {"item_name": ["like", `%${searchTerm}%`]},
-            limit: 20
-        },
+        method: "havano_pos_addson.www.search.search_items", // update with your app name
+        args: { search_term: searchTerm, search_type: searchType },
         callback: function(response) {
             if (response.message) {
                 currentSearchResults = response.message;
@@ -18,18 +11,29 @@ function searchItems(searchTerm, searchType = 'name') {
                     price_list_rate: item.valuation_rate,
                     actual_qty: 1
                 }));
-                displaySearchResults(itemsWithPrice);
+                displaySearchResults(itemsWithPrice,searchTerm);
             }
         }
     });
 }
 
+
 // Display search results
-function displaySearchResults(items) {
+function displaySearchResults(items,searchTerm) {
     searchDropdown.innerHTML = '';
     
     if (items.length === 0) {
         searchDropdown.innerHTML = '<div class="ha-search-result-item">No items found</div>';
+        showHaPopupCustom('Item not found')
+        const currentRow = activeItemField.closest('tr');
+        if (currentRow) {
+            currentRow.querySelector('.item-code').value = '';
+            currentRow.querySelector('.item-name').value = '';
+            currentRow.querySelector('.item-uom').value = 'Nos';
+            currentRow.querySelector('.item-rate').value = '0.00';
+            currentRow.querySelector('.item-qty').value = '1';
+            currentRow.querySelector('.item-amount').value = '0.00';
+        }
         return;
     }
     
@@ -46,7 +50,7 @@ function displaySearchResults(items) {
         `;
         
         resultItem.addEventListener('click', () => {
-            const result = selectItem(item, activeItemField.closest('tr'));
+            const result = selectItem(item, activeItemField.closest('tr'),searchTerm);
             searchDropdown.style.display = 'none';
             isInSearchMode = false;
             
@@ -109,51 +113,72 @@ function showItemSearchDropdown(field) {
     displaySearchResults(allItems.slice(0, 10));
 }
 
-// Select item and populate row
-function selectItem(item, row) {
-    
+function selectItem(item, row, searchTerm) {
     // Remove empty rows above before selecting the item
     removeEmptyRowsAbove(row);
-    
-    // Check if item has a valid rate
+    console.log(item.scale_type);
+    console.log(searchTerm)
+
+    // Determine item rate and description
     const itemRate = parseFloat(item.valuation_rate) || 0;
     const itemDescription = item.description || '';
     const isGiftItem = itemDescription.toLowerCase().includes('gift');
-    if (itemRate === 0 && isGiftItem) {
-        // frappe.show_alert(`Item "${item.item_name || item.name || 'Unknown Item'}" is a gift item and rate is empty.`);
-    }
-    
+
+    // Handle zero rate for non-gift items
     if (itemRate === 0 && !isGiftItem) {
-        // Show error message and clear the row (only for non-gift items)
         const itemName = item.item_name || item.name || 'Unknown Item';
         frappe.msgprint(`Item "${itemName}" rate is empty. Please contact admin to add rate for this item.`);
-        // Clear the row to remove the item
+
+        // Clear the row
         row.querySelector('.item-code').value = '';
         row.querySelector('.item-name').value = '';
         row.querySelector('.item-uom').value = 'Nos';
         row.querySelector('.item-rate').value = '0.00';
         row.querySelector('.item-qty').value = '1';
         row.querySelector('.item-amount').value = '0.00';
-        
-        // Update totals
+
         updateTotals();
-        
+
         // Clear search mode
         isInSearchMode = false;
         currentSearchTerm = '';
-        return false; // Return false to indicate failure
+        return false;
     }
-    
-    row.querySelector('.item-code').value = item.name;
-    row.querySelector('.item-name').value = item.item_name || item.name;
-    row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-    row.querySelector('.item-rate').value = itemRate.toFixed(2);
-    
-    // Calculate amount
+
+   
+
+
+    // Handle Weight Based Scale items
+    if (item.scale_type === "Weight Based Scale") {
+        // Only use part of the code for quantity calculation
+        let itemCodeStr = String(searchTerm);
+        let middlePart = itemCodeStr.slice(7, -1); // remove first 7 and last char
+        let numericValue = parseInt(middlePart, 10) || 0;
+        let finalValue = numericValue / 1000;
+
+        row.querySelector('.item-code').value = searchTerm;
+        row.querySelector('.item-name').value = item.item_name || item.name;
+        row.querySelector('.item-rate').value = itemRate.toFixed(2);
+        row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+
+
+        console.log(finalValue);
+
+        row.querySelector('.item-qty').value = finalValue;
+    }else{
+        row.querySelector('.item-code').value = item.name;
+        row.querySelector('.item-name').value = item.item_name || item.name;
+        row.querySelector('.item-rate').value = itemRate.toFixed(2);
+        row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+
+    }
+
+    // Update the amount
     updateItemAmount(row.querySelector('.item-qty'));
-    
+
     // Clear search mode
     isInSearchMode = false;
     currentSearchTerm = '';
-    return 'new_item_added'; // Return specific status for new item added
+
+    return 'new_item_added';
 }

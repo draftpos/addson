@@ -23,6 +23,7 @@ function addNewRow() {
         <td class="ha-relative">
             <input type="text" class="item-code form-control ha-item-input" placeholder="Type item code">
         </td>
+        
         <td>
             <input type="text" class="item-name form-control ha-item-input" placeholder="Click to see all items">
         </td>

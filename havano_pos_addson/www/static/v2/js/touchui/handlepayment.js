@@ -41,6 +41,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   }
+  function roundToTwo(num) {
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+  }
 
   function fetchExchangeRate(fromCurrency, toCurrency) {
     if (fromCurrency === toCurrency) return 1;
@@ -58,7 +61,11 @@ document.addEventListener('DOMContentLoaded', function () {
       },
       callback: function(response) {
         if (response.message && response.message.exchange_rate) {
-          exchangeRates[`${fromCurrency}_${toCurrency}`] = response.message.exchange_rate;
+          
+      // exchangeRates[`${fromCurrency}_${toCurrency}`] = 1 / response.message.exchange_rate;
+      exchangeRates[`${fromCurrency}_${toCurrency}`] = roundToTwo(1 / response.message.exchange_rate);
+
+
         } else {
           // Fallback to 1 if no exchange rate found
           exchangeRates[`${fromCurrency}_${toCurrency}`] = 1;
@@ -409,6 +416,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const change = sumPaidInBaseCurrency - totalAmount; // Positive when overpaid, negative when underpaid
+    // if (Math.abs(change) < 0.01) {
+    //   change = 0;
+    // }
 
     const totalEl = document.getElementById('ha-pos-payment-pop-total-amount');
     if (totalEl) {

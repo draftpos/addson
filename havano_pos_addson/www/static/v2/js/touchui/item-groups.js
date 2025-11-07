@@ -471,49 +471,56 @@ function displayGroupItems(items) {
     currentGroupItemsPage = 0;
     displayGroupItemsWithPagination();
 }
-
-// Add item to the items table
 function addItemToTable(item) {
-    
-    // Check if item has a valid rate
     const itemRate = parseFloat(item.valuation_rate) || 0;
     const itemDescription = item.description || '';
     const isGiftItem = itemDescription.toLowerCase().includes('gift');
-    if (itemRate === 0 && isGiftItem) {
-        // frappe.show_alert(`Item "${item.item_name || item.name || 'Unknown Item'}" is a gift item and rate is empty.`);
-    }
+
     if (itemRate === 0 && !isGiftItem) {
-        // Show error message (only for non-gift items)
         const itemName = item.item_name || item.name || 'Unknown Item';
-        frappe.msgprint(`Item "${itemName}" rate is empty. Please contact admin to add rate for this item.`);
-        return false; // Return false to indicate failure
+        frappe.msgprint(`Item ${itemName} rate is empty. Please contact admin to add rate for this item.`);
+        return false;
     }
-    
-    // Check if we have an active row or need to create a new one
-    let targetRow = document.querySelector('.item-row-active');
-    
-    if (!targetRow) {
-        // If no active row, add a new row
-        addNewRow();
-        const rows = itemsTableBody.querySelectorAll('tr');
-        targetRow = rows[rows.length - 1];
+
+    const itemCode = item.name;
+
+    // Check if item already exists
+    const existingRow = Array.from(itemsTableBody.querySelectorAll('tr')).find(row => {
+        return row.querySelector('.item-code').value === itemCode;
+    });
+
+    if (existingRow) {
+        const qtyField = existingRow.querySelector('.item-qty');
+        const currentQty = parseFloat(qtyField.value) || 0;
+        qtyField.value = currentQty + 1;
+        updateItemAmount(qtyField);
+        qtyField.focus();
+        qtyField.select();
+
+        return 'quantity_updated';
     }
-    
-    // Remove empty rows above before adding the item
+
+    // Add new row if item doesn't exist
+    addNewRow();
+    const rows = itemsTableBody.querySelectorAll('tr');
+    const targetRow = rows[rows.length - 1];
+
+    // Make this row active
+    rows.forEach(r => r.classList.remove('item-row-active'));
+    targetRow.classList.add('item-row-active');
+
     removeEmptyRowsAbove(targetRow);
-    
-    // Populate the row with item data
+
     targetRow.querySelector('.item-code').value = item.name;
     targetRow.querySelector('.item-name').value = item.item_name || item.name;
     targetRow.querySelector('.item-uom').value = item.stock_uom || 'Nos';
     targetRow.querySelector('.item-rate').value = itemRate.toFixed(2);
-    
-    // Calculate amount
+
     updateItemAmount(targetRow.querySelector('.item-qty'));
-    
-    // Focus on the quantity field
-    targetRow.querySelector('.item-qty').focus();
-    targetRow.querySelector('.item-qty').select();
-    
-    return 'new_item_added'; // Return specific status for new item added
+
+    const qtyField = targetRow.querySelector('.item-qty');
+    qtyField.focus();
+    qtyField.select();
+
+    return 'new_item_added';
 }

@@ -77,7 +77,7 @@ function printInvoice(invoiceName) {
         }
     });
 }
-
+var total_of_all_items=0
 // Save sales invoice
 function saveSalesInvoice(shouldPrint = false) {
     return new Promise((resolve, reject) => {
@@ -100,6 +100,8 @@ function saveSalesInvoice(shouldPrint = false) {
             const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
             const rate = parseFloat(row.querySelector('.item-rate').value) || 0;
 
+            total_of_all_items += qty * rate;
+
             if (itemCode && qty && rate) {
                 hasItems = true;
                 items.push({
@@ -109,6 +111,8 @@ function saveSalesInvoice(shouldPrint = false) {
                 });
             }
         });
+
+                
 
         if (!hasItems) {
             showToast('Please add at least one item', 'error');
@@ -244,8 +248,7 @@ function saveSalesInvoice(shouldPrint = false) {
                                 }
                             });
                         }
-                        
-                        
+                                    
                         // If no payments found, create a default cash payment with total amount
                         if (payments.length === 0) {
                             const totalAmount = parseFloat(document.querySelector('#totalAmount')?.textContent?.replace(/[^0-9.-]/g, '') || 
@@ -277,7 +280,7 @@ function saveSalesInvoice(shouldPrint = false) {
                             setTimeout(() => {
                                 frappe.call({
                                     method: "havano_pos_addson.havano_pos_addson.doctype.havano_pos_entry.havano_pos_entry.save_pos_entries",
-                                    args: { payments: payments },
+                                    args: { payments: payments,total_of_all_items:total_of_all_items },
                                     async: true,
                                     callback: function(r) {
                                         if (r.message) {
