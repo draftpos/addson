@@ -471,6 +471,10 @@ function displayGroupItems(items) {
     currentGroupItemsPage = 0;
     displayGroupItemsWithPagination();
 }
+
+// Keep track of the last added row
+let lastAddedRow = null;
+
 function addItemToTable(item) {
     const itemRate = parseFloat(item.valuation_rate) || 0;
     const itemDescription = item.description || '';
@@ -482,45 +486,42 @@ function addItemToTable(item) {
         return false;
     }
 
-    const itemCode = item.name;
+    // If previous row exists and its code matches, increment its quantity
+    if (lastAddedRow) {
+        const prevCode = lastAddedRow.querySelector('.item-code').value;
+        if (prevCode === item.name) {
+            const qtyField = lastAddedRow.querySelector('.item-qty');
+            const currentQty = parseFloat(qtyField.value) || 0;
+            qtyField.value = currentQty + 1;
+            updateItemAmount(qtyField);
 
-    // Check if item already exists
-    const existingRow = Array.from(itemsTableBody.querySelectorAll('tr')).find(row => {
-        return row.querySelector('.item-code').value === itemCode;
-    });
+            qtyField.focus();
+            qtyField.select();
 
-    if (existingRow) {
-        const qtyField = existingRow.querySelector('.item-qty');
-        const currentQty = parseFloat(qtyField.value) || 0;
-        qtyField.value = currentQty + 1;
-        updateItemAmount(qtyField);
-        qtyField.focus();
-        qtyField.select();
-
-        return 'quantity_updated';
+            return 'quantity_updated';
+        }
     }
 
-    // Add new row if item doesn't exist
+    // Otherwise, add a new row
     addNewRow();
-    const rows = itemsTableBody.querySelectorAll('tr');
-    const targetRow = rows[rows.length - 1];
+    const rows = Array.from(itemsTableBody.querySelectorAll('tr'));
+    const newRow = rows[rows.length - 1];
 
-    // Make this row active
-    rows.forEach(r => r.classList.remove('item-row-active'));
-    targetRow.classList.add('item-row-active');
+    removeEmptyRowsAbove(newRow);
 
-    removeEmptyRowsAbove(targetRow);
+    newRow.querySelector('.item-code').value = item.name;
+    newRow.querySelector('.item-name').value = item.item_name || item.name;
+    newRow.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+    newRow.querySelector('.item-rate').value = itemRate.toFixed(2);
 
-    targetRow.querySelector('.item-code').value = item.name;
-    targetRow.querySelector('.item-name').value = item.item_name || item.name;
-    targetRow.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-    targetRow.querySelector('.item-rate').value = itemRate.toFixed(2);
+    updateItemAmount(newRow.querySelector('.item-qty'));
 
-    updateItemAmount(targetRow.querySelector('.item-qty'));
-
-    const qtyField = targetRow.querySelector('.item-qty');
+    const qtyField = newRow.querySelector('.item-qty');
     qtyField.focus();
     qtyField.select();
+
+    // Update last added row reference
+    lastAddedRow = newRow;
 
     return 'new_item_added';
 }
