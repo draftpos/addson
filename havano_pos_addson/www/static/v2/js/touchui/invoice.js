@@ -34,49 +34,76 @@ function hideProgressBar() {
         }, 500);
     }
 }
-
-// Print Invoice Function
-function printInvoice(invoiceName) {
-    return new Promise((resolve, reject) => {
-        if (!invoiceName) {
-            reject('No invoice name provided');
-            return;
+function get_print_format(){
+    frappe.call({
+    method: "havano_pos_addson.www.search.get_print_template",
+    callback: function(r) {
+        if (!r.exc) {
+            console.log("Print template:", r.message);
         }
-        
-        try {
-            updateProgress(90, 'Opening print preview...');
-            
-            // Build the print URL
-            const printUrl = `/api/method/frappe.utils.print_format.download_pdf?doctype=Sales%20Invoice&name=${encodeURIComponent(invoiceName)}&format=Standard&no_letterhead=0`;
-            
-            // Open in modal iframe
-            if (typeof window.openPrintModal === 'function') {
-                window.openPrintModal(printUrl);
-                updateProgress(100, 'Complete!');
-                
-                // Small delay to ensure modal opens
-                setTimeout(() => {
-                    resolve(invoiceName);
-                }, 500);
+    }
+});
+
+}
+function downloadInvoiceJSON(invoiceName) {
+    frappe.call({
+        method: "havano_pos_addson.www.search.get_invoice_json",
+        args: { invoice_name: invoiceName },
+        callback: function(r) {
+            if (r.message && !r.message.error) {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(r.message, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", invoiceName + "_invoice.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
             } else {
-                // Fallback to new window if modal function not available
-                const printWindow = window.open(printUrl, '_blank');
-                
-                if (printWindow) {
-                    updateProgress(100, 'Complete!');
-                    setTimeout(() => {
-                        resolve(invoiceName);
-                    }, 500);
-                } else {
-                    reject('Unable to open print preview. Please allow pop-ups.');
-                }
+                frappe.msgprint("Invoice not found or error occurred.");
             }
-        } catch (err) {
-            console.error('Print error:', err);
-            reject('Error opening print preview: ' + err.message);
         }
     });
 }
+
+
+
+function printInvoice(invoiceName) {
+    if (!invoiceName) {
+        return Promise.reject("No invoice name provided");
+    }
+
+    const format = get_print_format(); // assuming sync; if async, use await
+
+    if (format === "A4") {
+        return new Promise((resolve, reject) => {
+            try {
+                const printUrl = `/api/method/frappe.utils.print_format.download_pdf?doctype=Sales%20Invoice&name=${encodeURIComponent(invoiceName)}&format=Standard&no_letterhead=0`;
+
+                if (typeof window.openPrintModal === "function") {
+                    window.openPrintModal(printUrl);
+                    setTimeout(() => resolve(invoiceName), 500);
+                } else {
+                    const win = window.open(printUrl, "_blank");
+                    if (win) setTimeout(() => resolve(invoiceName), 500);
+                    else reject("Cannot open print window");
+                }
+            } catch (err) {
+                reject(err);
+            }
+        });
+    } else {
+        // Wrap JSON download in a Promise too
+        return new Promise((resolve, reject) => {
+            try {
+                downloadInvoiceJSON(invoiceName);
+                resolve(invoiceName);
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+}
+
 var total_of_all_items=0
 // Save sales invoice
 function saveSalesInvoice(shouldPrint = false) {

@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -35,3 +36,33 @@ def search_items(search_term, search_type="name"):
 
     # Always return at least one match if prefix matches
     return items
+
+
+
+
+@frappe.whitelist()
+def get_print_template():
+    """
+    Returns the 'print_template' value for the HA POS Setting record SETTINGS-01
+    """
+    try:
+        setting = frappe.get_doc("HA POS Setting", "SETTINGS-01")
+        return setting.print_template
+
+    except frappe.DoesNotExistError:
+        frappe.throw(*("HA POS Setting record SETTINGS-01 does not exist"))
+    except Exception as e:
+        frappe.throw(*("Error fetching print template: {0}").format(str(e)))
+
+
+
+@frappe.whitelist()
+def get_invoice_json(invoice_name):
+    """
+    Given an invoice name, return all fields as JSON.
+    """
+    try:
+        invoice = frappe.get_doc("Sales Invoice", invoice_name)
+        return invoice.as_dict()  # Returns all fields as JSON
+    except frappe.DoesNotExistError:
+        return {"error": "Invoice not found"}

@@ -128,7 +128,6 @@ def save_pos_entries(payments, total_of_all_items):
         "shift_summary": shift_updates
     }
 
-
 @frappe.whitelist()
 def create_payment_entry(
     *,
@@ -148,9 +147,11 @@ def create_payment_entry(
     reference_name=None
 ):
     """
-    Creates a Payment Entry in ERPNext with named parameters only.
+    Creates and submits a Payment Entry in ERPNext with named parameters only.
     """
     try:
+        from frappe.utils import nowdate
+
         posting_date = posting_date or nowdate()
 
         payment_entry = frappe.get_doc({
@@ -179,11 +180,12 @@ def create_payment_entry(
 
         payment_entry.flags.ignore_permissions = True
         payment_entry.insert()
+        payment_entry.submit()  # <-- Submit the document
         frappe.db.commit()
 
         return {
             "status": 200,
-            "message": "Payment Entry created successfully",
+            "message": "Payment Entry created and submitted successfully",
             "data": payment_entry.name
         }
 
@@ -195,10 +197,6 @@ def create_payment_entry(
             "message": str(e),
             "data": None
         }
-
-
-
-
 
 
 
