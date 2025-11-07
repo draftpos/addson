@@ -22,7 +22,8 @@ class HavanoPOSEntry(Document):
 def save_pos_entries(payments, total_of_all_items):
     """
     Insert multiple Havano POS Entry records at once.
-    The last payment's base_amount always equals the remaining balance.
+    Ensures each invoice is handled independently and
+    last payment covers remaining balance.
     """
     import json
 
@@ -30,9 +31,10 @@ def save_pos_entries(payments, total_of_all_items):
         payments = json.loads(payments)
 
     total_of_all_items = float(total_of_all_items or 0)
+    base_currency = "USD"
+    current_amount=0
     current_amount = total_of_all_items
     results = []
-    base_amount=0
     shift_updates = {}
 
     # Filter valid payments
@@ -40,75 +42,85 @@ def save_pos_entries(payments, total_of_all_items):
         p for p in payments
         if p.get("shift_name") and p.get("payment_method") and p.get("amount") and float(p.get("amount")) > 0
     ]
+    current_amount = total_of_all_items
+
     total_valid = len(valid_payments)
 
+    if total_valid == 0:
+        frappe.throw("No valid payments provided.")
+
     for idx, p in enumerate(valid_payments):
-        base_amount=0
+        print(f"Processing payment {idx + 1}/{len(valid_payments)}:")
+        print(json.dumps(p, indent=4))  # Pretty-print the dict
+
         invoice_number = p.get("invoice_number")
         currency = p.get("currency") or "USD"
-        base_currency = "USD"
+        raw_amount = float(p.get("amount") or 0)
 
-        # Compute base_amount
-        raw_base = float(p.get("base_amount") or p.get("amount"))
+        # Always reinit base_amount
+        base_amount = 0.0
+
+        # Convert to base currency
         if currency != base_currency:
-            base_amount = round(raw_base / 30, 2)
+            base_amount = round(raw_amount / 30, 2)  # example conversion
         else:
-            base_amount = raw_base
+            base_amount = raw_amount
 
-        # Last payment always takes the remaining balance
+        # Handle last payment properly
         if idx == total_valid - 1:
-            base_amount = current_amount
+            base_amount = round(current_amount, 2)
         else:
             base_amount = min(base_amount, current_amount)
 
-     
-        shift_name = p.get("shift_name")
+        # Safety: never negative
+        if base_amount < 0:
+            base_amount = 0
 
-        # Create POS Entry
-        doc = frappe.get_doc({
-            "doctype": "Havano POS Entry",
-            "invoice_number": invoice_number,
-            "invoice_date": p.get("invoice_date") or nowdate(),
-            "payment_method": p.get("payment_method"),
-            "amount": p.get("amount"),
-            "currency": currency,
-            "base_amount": base_amount,
-            "base_currency": base_currency,
-            "shift_name": shift_name
-        })
-        doc.insert(ignore_permissions=True)
-        doc.submit()
-        frappe.db.commit()
-        results.append(doc.name)
-
-        # Create Payment Entry
-        create_payment_entry(
-            company="Boring",
-            payment_type="Receive",
-            party_type="Customer",
-            party="walking customer",
-            paid_from=None,
-            paid_from_currency=None,
-            paid_to="Cash - B",
-            paid_to_currency=currency,
-            paid_amount=base_amount,
-            received_amount=base_amount,
-            mode_of_payment=p.get("payment_method"),
-            reference_doctype="Sales Invoice",
-            reference_name=invoice_number
-        )
-
-        # Update shift totals
-        shift_updates[shift_name] = shift_updates.get(shift_name, 0.0) + base_amount
-
-        # Subtract after assigning base_amount
+        # Subtract after calculation
         current_amount = round(current_amount - base_amount, 2)
-           # Skip completely invalid payments only (not last payment)
-        # if current_amount <= 0:
-        #     continue
 
+        # --- Create the POS Entry only for valid base_amounts ---
+        print(f"Index: {idx}, Base Amount: {base_amount}, Current Remaining: {current_amount}")
 
-    # Update shift documents
+        if base_amount > 0:
+            doc = frappe.get_doc({
+                "doctype": "Havano POS Entry",
+                "invoice_number": invoice_number,
+                "invoice_date": p.get("invoice_date") or nowdate(),
+                "payment_method": p.get("payment_method"),
+                "amount": base_amount if currency == base_currency else base_amount * 30,
+                "currency": currency,
+                "base_amount": base_amount,
+                "base_currency": base_currency,
+                "shift_name": p.get("shift_name")
+            })
+            doc.insert(ignore_permissions=True)
+            doc.submit()
+            frappe.db.commit()
+            results.append(doc.name)
+
+            # Create corresponding Payment Entry
+            create_payment_entry(
+                company="Boring",
+                payment_type="Receive",
+                party_type="Customer",
+                party="walking customer",
+                paid_from=None,
+                paid_from_currency=None,
+                paid_to="Cash - B",
+                paid_to_currency=currency,
+                paid_amount=base_amount,
+                received_amount=base_amount,
+                mode_of_payment=p.get("payment_method"),
+                reference_doctype="Sales Invoice",
+                reference_name=invoice_number
+            )
+
+            # Track shift totals
+            shift_name = p.get("shift_name")
+            shift_updates[shift_name] = shift_updates.get(shift_name, 0.0) + base_amount
+
+    # --- Update shift totals ---
     for shift_name, total_added in shift_updates.items():
         try:
             shift_doc = frappe.get_doc("Havano POS Shift", shift_name)
@@ -119,7 +131,7 @@ def save_pos_entries(payments, total_of_all_items):
             shift_doc.save(ignore_permissions=True)
             frappe.db.commit()
         except Exception as e:
-            print(f"Error updating shift {shift_name}: {e}")
+            frappe.log_error(f"Error updating shift {shift_name}: {e}", "POS Shift Update")
 
     return {
         "status": 200,
@@ -127,6 +139,8 @@ def save_pos_entries(payments, total_of_all_items):
         "remaining_balance": current_amount,
         "shift_summary": shift_updates
     }
+
+
 
 @frappe.whitelist()
 def create_payment_entry(

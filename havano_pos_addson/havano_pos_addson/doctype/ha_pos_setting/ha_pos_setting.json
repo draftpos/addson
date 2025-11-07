@@ -14,7 +14,8 @@
   "default_currency",
   "section_break_sjjd",
   "selected_payment_methods",
-  "print_template"
+  "print_template",
+  "table_ijka"
  ],
  "fields": [
   {
@@ -74,10 +75,15 @@
    "fieldtype": "Select",
    "label": "Print template",
    "options": "80mm\nA4\nBoth"
+  },
+  {
+   "fieldname": "table_ijka",
+   "fieldtype": "Table",
+   "options": "HA POS Setting User Table"
   }
  ],
  "links": [],
- "modified": "2025-11-07 11:59:07.149231",
+ "modified": "2025-11-07 23:16:04.750760",
  "modified_by": "Administrator",
  "module": "Havano Pos Addson",
  "name": "HA POS Setting",

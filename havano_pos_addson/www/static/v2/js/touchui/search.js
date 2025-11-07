@@ -20,20 +20,16 @@ function searchItems(searchTerm, searchType = 'name') {
 
 // Display search results
 function displaySearchResults(items,searchTerm) {
+        setTimeout(() => {
+        console.log("1 second has passed");
+    }, 1000); // 1000 ms = 1 second
+
     searchDropdown.innerHTML = '';
     
     if (items.length === 0) {
         searchDropdown.innerHTML = '<div class="ha-search-result-item">No items found</div>';
-        showHaPopupCustom('Item not found')
-        const currentRow = activeItemField.closest('tr');
-        if (currentRow) {
-            currentRow.querySelector('.item-code').value = '';
-            currentRow.querySelector('.item-name').value = '';
-            currentRow.querySelector('.item-uom').value = 'Nos';
-            currentRow.querySelector('.item-rate').value = '0.00';
-            currentRow.querySelector('.item-qty').value = '1';
-            currentRow.querySelector('.item-amount').value = '0.00';
-        }
+        // showHaPopupCustom('Item not found')
+       
         return;
     }
     
@@ -112,14 +108,17 @@ function showItemSearchDropdown(field) {
     positionDropdown(field);
     displaySearchResults(allItems.slice(0, 10));
 }
+var bb="new";
 
+
+
+// Keep track of the last row where an item was added
+
+lastAddedRoww = null;
 function selectItem(item, row, searchTerm) {
     // Remove empty rows above before selecting the item
     removeEmptyRowsAbove(row);
-    console.log(item.scale_type);
-    console.log(searchTerm)
 
-    // Determine item rate and description
     const itemRate = parseFloat(item.valuation_rate) || 0;
     const itemDescription = item.description || '';
     const isGiftItem = itemDescription.toLowerCase().includes('gift');
@@ -129,30 +128,51 @@ function selectItem(item, row, searchTerm) {
         const itemName = item.item_name || item.name || 'Unknown Item';
         frappe.msgprint(`Item "${itemName}" rate is empty. Please contact admin to add rate for this item.`);
 
-        // Clear the row
         row.querySelector('.item-code').value = '';
         row.querySelector('.item-name').value = '';
         row.querySelector('.item-uom').value = 'Nos';
         row.querySelector('.item-rate').value = '0.00';
         row.querySelector('.item-qty').value = '1';
         row.querySelector('.item-amount').value = '0.00';
-
         updateTotals();
 
-        // Clear search mode
         isInSearchMode = false;
         currentSearchTerm = '';
         return false;
     }
 
-   
+    // --- Check if last added row has the same item ---
+    if (lastAddedRoww) {
+        const lastItemCode = lastAddedRoww.querySelector('.item-code').value;
+        if (lastItemCode === (item.name || searchTerm)) {
+            bb="not new";
+            let qtyField = lastAddedRoww.querySelector('.item-qty');
+            let currentQty = parseFloat(qtyField.value) || 0;
 
+            if (item.scale_type === "Weight Based Scale") {
+                let middlePart = String(searchTerm).slice(7, -1);
+                let numericValue = parseInt(middlePart, 10) || 0;
+                currentQty += numericValue / 1000;
+            } else {
+                currentQty += 1;
+            }
 
-    // Handle Weight Based Scale items
+            qtyField.value = currentQty.toFixed(3);
+            updateItemAmount(qtyField);
+            updateTotals();
+
+            qtyField.focus();
+            qtyField.select();
+
+            isInSearchMode = false;
+            currentSearchTerm = '';
+            return 'quantity_increased';
+        }
+    }
+
+    // --- Otherwise, populate the current row as new item ---
     if (item.scale_type === "Weight Based Scale") {
-        // Only use part of the code for quantity calculation
-        let itemCodeStr = String(searchTerm);
-        let middlePart = itemCodeStr.slice(7, -1); // remove first 7 and last char
+        let middlePart = String(searchTerm).slice(7, -1);
         let numericValue = parseInt(middlePart, 10) || 0;
         let finalValue = numericValue / 1000;
 
@@ -160,23 +180,22 @@ function selectItem(item, row, searchTerm) {
         row.querySelector('.item-name').value = item.item_name || item.name;
         row.querySelector('.item-rate').value = itemRate.toFixed(2);
         row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-
-
-        console.log(finalValue);
-
         row.querySelector('.item-qty').value = finalValue;
-    }else{
+    } else {
+        bb="new";
         row.querySelector('.item-code').value = item.name;
         row.querySelector('.item-name').value = item.item_name || item.name;
         row.querySelector('.item-rate').value = itemRate.toFixed(2);
         row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-
+        row.querySelector('.item-qty').value = 1;
     }
 
-    // Update the amount
     updateItemAmount(row.querySelector('.item-qty'));
+    updateTotals();
 
-    // Clear search mode
+    // Update the last added row reference
+    lastAddedRoww = row;
+
     isInSearchMode = false;
     currentSearchTerm = '';
 

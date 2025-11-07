@@ -301,6 +301,8 @@ function saveSalesInvoice(shouldPrint = false) {
 
                         // ✅ Resolve invoice name immediately
                         resolve(invoiceNumber);
+                        const subTotalEl = document.getElementById('sub_total');
+                        total_of_all_items=subTotalEl ? parseFloat(subTotalEl.value) || 0 : 0;
                         
                         // Save POS Entry records asynchronously (non-blocking)
                         if (payments.length > 0) {

@@ -175,11 +175,15 @@ function bindEvents() {
         
         // Enter key to move to next field/row or confirm selection
         if (e.key === 'Enter') {
+            setTimeout(() => {
+            console.log("enter pressed-----------");
+            console.log(bb);
             const activeElement = document.activeElement;
             
             // Handle Enter in search dropdown
             if (searchDropdown.style.display === 'block') {
                 e.preventDefault();
+
                 const activeResult = searchDropdown.querySelector('.ha-search-result-active');
                 if (activeResult) {
                     activeResult.click();
@@ -195,7 +199,7 @@ function bindEvents() {
                         nextRow.querySelector('.item-code').focus();
                         nextRow.querySelector('.item-code').select();
                     } else {
-                        addNewRow();
+                        // addNewRow();
                         const newRow = itemsTableBody.lastChild;
                         newRow.querySelector('.item-code').focus();
                         newRow.querySelector('.item-code').select();
@@ -203,37 +207,31 @@ function bindEvents() {
                 }
             }
             // Handle Enter in item code field - FIRST ENTER SHOWS SEARCH
-            else if (activeElement.classList.contains('item-code')) {
-                e.preventDefault();
-                const row = activeElement.closest('tr');
-                const code = activeElement.value.trim();
-                currentSearchTerm = code;
-                
-                if (code) {
-                    // If we're already in search mode, select the first result
-                    if (isInSearchMode) {
-                        const firstResult = searchDropdown.querySelector('.ha-search-result-item');
-                        if (firstResult) {
-                            firstResult.click();
-                            searchDropdown.style.display = 'none';
-                            isInSearchMode = false;
-                            
-                            // Navigation is now handled in the click event handler
-                            // based on the success/failure of selectItem
-                        }
-                    } else {
-                        // First Enter - show search results
-                        showItemSearchDropdown(activeElement);
-                        searchItems(code, 'code');
-                        isInSearchMode = true;
-                    }
+           else if (activeElement.classList.contains('item-code')) {
+    e.preventDefault();
+    const code = activeElement.value.trim();
+    currentSearchTerm = code;
+
+    if (code) {
+        if (isInSearchMode) {
+            // wait until searchDropdown is populated
+            const trySelect = () => {
+                const firstResult = searchDropdown.querySelector('.ha-search-result-item');
+                if (firstResult) {
+                    // firstResult.click();
                 } else {
-                    // If empty, show all items
-                    showItemSearchDropdown(activeElement);
-                    displaySearchResults(allItems.slice(0, 10));
-                    isInSearchMode = true;
+                    setTimeout(trySelect, 50); // try again in 50ms
                 }
             }
+            trySelect();
+        } else {
+            showItemSearchDropdown(activeElement);
+            searchItems(code, 'code'); // populate dropdown
+            isInSearchMode = true;
+        }
+    }
+}
+
             // Handle Enter in item name field - FIRST ENTER SHOWS SEARCH
             else if (activeElement.classList.contains('ha-item-input') && 
                      !activeElement.classList.contains('item-code')) {
@@ -246,7 +244,7 @@ function bindEvents() {
                     // Second Enter - select first result
                     const firstResult = searchDropdown.querySelector('.ha-search-result-item');
                     if (firstResult) {
-                        firstResult.click();
+                        // firstResult.click();
                         searchDropdown.style.display = 'none';
                         isInSearchMode = false;
                         
@@ -279,7 +277,7 @@ function bindEvents() {
                     nextRow.querySelector('.item-code').select();
                 } else {
                     // If no next row, add new row and focus on item code
-                    addNewRow();
+                    // addNewRow();
                     const newRow = itemsTableBody.lastChild;
                     newRow.querySelector('.item-code').focus();
                     newRow.querySelector('.item-code').select();
@@ -290,7 +288,7 @@ function bindEvents() {
                 e.preventDefault();
                 moveToNextField();
             }
-        }
+        }, 50)};
         
         // Tab key to move to next field
         if (e.key === 'Tab') {
