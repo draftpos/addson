@@ -51,10 +51,13 @@ function downloadInvoiceJSON(invoiceName) {
         args: { invoice_name: invoiceName },
         callback: function(r) {
             if (r.message && !r.message.error) {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(r.message, null, 2));
+                // Convert JSON object to string
+                const dataStr = "data:text/plain;charset=utf-8," + encodeURIComponent(JSON.stringify(r.message, null, 2));
+
+                // Create a temporary download link
                 const downloadAnchorNode = document.createElement('a');
                 downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", invoiceName + "_invoice.json");
+                downloadAnchorNode.setAttribute("download", invoiceName + "_invoice.txt"); // Use .txt
                 document.body.appendChild(downloadAnchorNode);
                 downloadAnchorNode.click();
                 downloadAnchorNode.remove();
@@ -64,6 +67,26 @@ function downloadInvoiceJSON(invoiceName) {
         }
     });
 }
+
+// function downloadInvoiceJSON(invoiceName) {
+//     frappe.call({
+//         method: "havano_pos_addson.www.search.get_invoice_json",
+//         args: { invoice_name: invoiceName },
+//         callback: function(r) {
+//             if (r.message && !r.message.error) {
+//                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(r.message, null, 2));
+//                 const downloadAnchorNode = document.createElement('a');
+//                 downloadAnchorNode.setAttribute("href", dataStr);
+//                 downloadAnchorNode.setAttribute("download", invoiceName + "_invoice.json");
+//                 document.body.appendChild(downloadAnchorNode);
+//                 downloadAnchorNode.click();
+//                 downloadAnchorNode.remove();
+//             } else {
+//                 frappe.msgprint("Invoice not found or error occurred.");
+//             }
+//         }
+//     });
+// }
 
 
 
