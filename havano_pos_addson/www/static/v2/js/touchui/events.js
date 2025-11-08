@@ -174,121 +174,42 @@ function bindEvents() {
 
         
         // Enter key to move to next field/row or confirm selection
-        if (e.key === 'Enter') {
-            setTimeout(() => {
-            console.log("enter pressed-----------");
-            console.log(bb);
-            const activeElement = document.activeElement;
-            
-            // Handle Enter in search dropdown
-            if (searchDropdown.style.display === 'block') {
-                e.preventDefault();
+        if (e.key === 'Enter') { const activeEl = document.activeElement;
 
-                const activeResult = searchDropdown.querySelector('.ha-search-result-active');
-                if (activeResult) {
-                    activeResult.click();
-                    searchDropdown.style.display = 'none';
-                    isInSearchMode = false;
-                    // console.log("allSettings", allSettings);
+    // Handle Enter only in item fields
+    if (activeEl.classList.contains('item-code') || activeEl.classList.contains('ha-item-input')) {
+        e.preventDefault();
 
-                    // Always go to next row after selecting item from search
-                    const currentRow = activeElement.closest('tr');
-                    const nextRow = currentRow.nextElementSibling;
-                    
-                    if (nextRow) {
-                        nextRow.querySelector('.item-code').focus();
-                        nextRow.querySelector('.item-code').select();
-                    } else {
-                        // addNewRow();
-                        const newRow = itemsTableBody.lastChild;
-                        newRow.querySelector('.item-code').focus();
-                        newRow.querySelector('.item-code').select();
-                    }
+        const searchTerm = activeEl.value.trim();
+        if (!searchTerm) return;
+
+        // Trigger search
+        searchItems(searchTerm, activeEl.classList.contains('item-code') ? 'code' : 'name');
+
+        // Wait a tiny bit and select the first item automatically
+        setTimeout(() => {
+            const firstResult = searchDropdown.querySelector('.ha-search-result-item');
+            if (firstResult) {
+                firstResult.click(); // this calls selectItem()
+                searchDropdown.style.display = 'none';
+                isInSearchMode = false;
+
+                // Move to next row
+                const currentRow = activeEl.closest('tr');
+                let nextRow = currentRow.nextElementSibling;
+                if (!nextRow) {
+                    // addNewRow();
+                    nextRow = itemsTableBody.lastChild;
                 }
-            }
-            // Handle Enter in item code field - FIRST ENTER SHOWS SEARCH
-           else if (activeElement.classList.contains('item-code')) {
-    e.preventDefault();
-    const code = activeElement.value.trim();
-    currentSearchTerm = code;
 
-    if (code) {
-        if (isInSearchMode) {
-            // wait until searchDropdown is populated
-            const trySelect = () => {
-                const firstResult = searchDropdown.querySelector('.ha-search-result-item');
-                if (firstResult) {
-                    // firstResult.click();
-                } else {
-                    setTimeout(trySelect, 50); // try again in 50ms
-                }
+                const nextCodeField = nextRow.querySelector('.item-code');
+                nextCodeField.focus();
+                nextCodeField.select();
             }
-            trySelect();
-        } else {
-            showItemSearchDropdown(activeElement);
-            searchItems(code, 'code'); // populate dropdown
-            isInSearchMode = true;
-        }
+        }, 500); // tiny delay for dropdown to populate
     }
 }
 
-            // Handle Enter in item name field - FIRST ENTER SHOWS SEARCH
-            else if (activeElement.classList.contains('ha-item-input') && 
-                     !activeElement.classList.contains('item-code')) {
-                e.preventDefault();
-                const row = activeElement.closest('tr');
-                const name = activeElement.value.trim();
-                currentSearchTerm = name;
-                
-                if (isInSearchMode) {
-                    // Second Enter - select first result
-                    const firstResult = searchDropdown.querySelector('.ha-search-result-item');
-                    if (firstResult) {
-                        // firstResult.click();
-                        searchDropdown.style.display = 'none';
-                        isInSearchMode = false;
-                        
-                        // Navigation is now handled in the click event handler
-                        // based on the success/failure of selectItem
-                    }
-                } else {
-                    // First Enter - show search results
-                    showItemSearchDropdown(activeElement);
-                    searchItems(name, 'name');
-                    isInSearchMode = true;
-                }
-            }
-            // Handle Enter in rate field
-            else if (activeElement.classList.contains('item-rate')) {
-                e.preventDefault();
-                const row = activeElement.closest('tr');
-                row.querySelector('.item-qty').focus();
-                row.querySelector('.item-qty').select();
-            }
-            // Handle Enter in quantity field
-            else if (activeElement.classList.contains('item-qty')) {
-                e.preventDefault();
-                
-                const row = activeElement.closest('tr');
-                const nextRow = row.nextElementSibling;
-                
-                if (nextRow) {
-                    nextRow.querySelector('.item-code').focus();
-                    nextRow.querySelector('.item-code').select();
-                } else {
-                    // If no next row, add new row and focus on item code
-                    // addNewRow();
-                    const newRow = itemsTableBody.lastChild;
-                    newRow.querySelector('.item-code').focus();
-                    newRow.querySelector('.item-code').select();
-                }
-            }
-            // Handle Enter in customer or price list fields
-            else if (activeElement === customerSelect || activeElement === priceListSelect) {
-                e.preventDefault();
-                moveToNextField();
-            }
-        }, 50)};
         
         // Tab key to move to next field
         if (e.key === 'Tab') {

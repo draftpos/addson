@@ -144,6 +144,9 @@ function selectItem(item, row, searchTerm) {
     // --- Check if last added row has the same item ---
     if (lastAddedRoww) {
         const lastItemCode = lastAddedRoww.querySelector('.item-code').value;
+
+        console.log(lastItemCode);
+        console.log(item.name);
         if (lastItemCode === (item.name || searchTerm)) {
             bb="not new";
             let qtyField = lastAddedRoww.querySelector('.item-qty');
