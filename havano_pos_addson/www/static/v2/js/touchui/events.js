@@ -171,42 +171,56 @@ function bindEvents() {
             e.preventDefault();
             handleFunctionKey('clearAll');
         }
-
+    const activeEl = document.activeElement;
         
         // Enter key to move to next field/row or confirm selection
-        if (e.key === 'Enter') { const activeEl = document.activeElement;
-
-    // Handle Enter only in item fields
+      if (e.key === 'Enter') {
+        console.log("----------impot  found");
+        console.log(foundornot);
+        
+   
+        
+      
     if (activeEl.classList.contains('item-code') || activeEl.classList.contains('ha-item-input')) {
         e.preventDefault();
-
         const searchTerm = activeEl.value.trim();
         if (!searchTerm) return;
+
+        if (foundornot === false){
+        console.log("----------impot  found");
+        console.log(foundornot);
+        showHaPopupCustom('Item not found');
+        const currentRow = activeEl.closest('tr');
+        activeEl.value = '';  // clears the field
+        activeEl.focus();     // optional: keep focus so user can type again
+
+    }
+   
+
 
         // Trigger search
         searchItems(searchTerm, activeEl.classList.contains('item-code') ? 'code' : 'name');
 
-        // Wait a tiny bit and select the first item automatically
+        // Wait a bit for dropdown to populate
         setTimeout(() => {
             const firstResult = searchDropdown.querySelector('.ha-search-result-item');
             if (firstResult) {
-                firstResult.click(); // this calls selectItem()
+                firstResult.click(); // triggers selectItem()
                 searchDropdown.style.display = 'none';
                 isInSearchMode = false;
 
                 // Move to next row
                 const currentRow = activeEl.closest('tr');
                 let nextRow = currentRow.nextElementSibling;
-                if (!nextRow) {
-                    // addNewRow();
-                    nextRow = itemsTableBody.lastChild;
-                }
+                if (!nextRow) nextRow = itemsTableBody.lastChild;
 
                 const nextCodeField = nextRow.querySelector('.item-code');
                 nextCodeField.focus();
                 nextCodeField.select();
+            } else {
+                console.log("none found"); // <-- this logs if no results
             }
-        }, 500); // tiny delay for dropdown to populate
+        }, 300); // small delay to give searchItems() time to populate dropdown
     }
 }
 

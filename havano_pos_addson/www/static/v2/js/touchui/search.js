@@ -16,24 +16,32 @@ function searchItems(searchTerm, searchType = 'name') {
         }
     });
 }
-
+   var foundornot = true;
 
 // Display search results
 function displaySearchResults(items,searchTerm) {
         setTimeout(() => {
-        console.log("1 second has passed");
     }, 1000); // 1000 ms = 1 second
 
     searchDropdown.innerHTML = '';
+    foundornot = false;
     
     if (items.length === 0) {
         searchDropdown.innerHTML = '<div class="ha-search-result-item">No items found</div>';
         // showHaPopupCustom('Item not found')
+     
+        console.log(foundornot);
        
         return;
     }
+    else{
+          foundornot=true;
+
+    }
     
     items.forEach((item, index) => {
+
+      
         const resultItem = document.createElement('div');
         resultItem.className = 'ha-search-result-item';
         if (index === 0) resultItem.classList.add('ha-search-result-active');
@@ -107,6 +115,7 @@ function showItemSearchDropdown(field) {
     activeItemField = field;
     positionDropdown(field);
     displaySearchResults(allItems.slice(0, 10));
+
 }
 var bb="new";
 
@@ -116,6 +125,7 @@ var bb="new";
 
 lastAddedRoww = null;
 function selectItem(item, row, searchTerm) {
+    console.log(item);
     // Remove empty rows above before selecting the item
     removeEmptyRowsAbove(row);
 
