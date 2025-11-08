@@ -58,6 +58,7 @@ def get_print_template():
 
 import frappe
 from frappe.utils import flt, now_datetime
+from frappe.utils import format_datetime
 
 @frappe.whitelist()
 def get_invoice_json(invoice_name):
@@ -95,7 +96,7 @@ def get_invoice_json(invoice_name):
             "VATNo": company.vat or "",
             "Tel": company.phone or "",
             "InvoiceNo": invoice.name,
-            "InvoiceDate": str(invoice.posting_date),
+            "InvoiceDate":str(invoice.creation),
             "CashierName": invoice.owner,
             "CustomerName": invoice.customer_name,
             "CustomerContact": invoice.contact_display or invoice.customer_name,
