@@ -22,6 +22,7 @@ def create_sales_invoice(customer, items, price_list=None, currency=None):
     invoice = frappe.get_doc({
         "doctype": "Sales Invoice",
         "customer": customer,
+        "update_stock": 1, 
         "currency": currency or settings.default_currency,
         "price_list": price_list or frappe.db.get_single_value("Selling Settings", "selling_price_list"),
         "items": []
