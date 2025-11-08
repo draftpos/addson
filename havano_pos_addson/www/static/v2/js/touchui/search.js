@@ -1,5 +1,10 @@
 // Search items with type parameter (code or name)
+var searchTermCalculation="";
 function searchItems(searchTerm, searchType = 'name') {
+    console.log("another-----------"+searchTerm);
+    searchTermCalculation=searchTerm;
+   
+    searchTermCalculation=searchTerm;
     frappe.call({
         method: "havano_pos_addson.www.search.search_items", // update with your app name
         args: { search_term: searchTerm, search_type: searchType },
@@ -17,7 +22,7 @@ function searchItems(searchTerm, searchType = 'name') {
     });
 }
    var foundornot = true;
-
+console.log("----------search term------"+searchTermCalculation);
 // Display search results
 function displaySearchResults(items,searchTerm) {
         setTimeout(() => {
@@ -185,11 +190,12 @@ function selectItem(item, row, searchTerm) {
 
     // --- Otherwise, populate the current row as new item ---
     if (item.scale_type === "Weight Based Scale") {
-        let middlePart = String(searchTerm).slice(7, -1);
+        console.log("----------search term------"+searchTermCalculation);
+        let middlePart = String(searchTermCalculation).slice(7, -1);
         let numericValue = parseInt(middlePart, 10) || 0;
         let finalValue = numericValue / 1000;
 
-        row.querySelector('.item-code').value = searchTerm;
+        row.querySelector('.item-code').value = searchTermCalculation;
         row.querySelector('.item-name').value = item.item_name || item.name;
         row.querySelector('.item-rate').value = itemRate.toFixed(2);
         row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
