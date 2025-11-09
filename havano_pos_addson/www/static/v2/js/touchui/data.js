@@ -38,6 +38,7 @@ function loadInitialData() {
 function loadPosSettings(callback) {
     frappe.call({
         method: "frappe.client.get_list",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: {
             doctype: "HA POS Setting",
             fields: ["ha_pos_settings_on", "ha_on_pres_enter", "default_customer", "default_price_list"],
@@ -108,6 +109,7 @@ function validateCustomerPriceList(settings, callback) {
     
     frappe.call({
         method: "frappe.client.get",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: {
             doctype: "Customer",
             name: settings.default_customer,
@@ -136,6 +138,7 @@ function loadCustomers(callback) {
     customerSelect.innerHTML = '<option value="">Select Customer</option>';
     frappe.call({
         method: "frappe.client.get_list",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: {
             doctype: "Customer",
             fields: ["name", "customer_name"],
@@ -169,6 +172,7 @@ function loadPriceLists(callback) {
     
     frappe.call({
         method: "frappe.client.get_list",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: {
             doctype: "Price List",
             fields: ["name", "price_list_name"],
@@ -200,6 +204,7 @@ function loadPriceLists(callback) {
 function loadAllItems(callback) {
     frappe.call({
         method: "frappe.client.get_list",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: {
             doctype: "Item",
             fields: ["name", "item_name", "description", "stock_uom", "valuation_rate","simple_code"],
@@ -238,6 +243,7 @@ function setDefaultValues(data) {
             // If customer doesn't exist in options, try to load it
             frappe.call({
                 method: "frappe.client.get",
+                headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
                 args: {
                     doctype: "Customer",
                     name: data.default_customer
@@ -269,6 +275,7 @@ function setDefaultValues(data) {
             // If price list doesn't exist in options, try to load it
             frappe.call({
                 method: "frappe.client.get",
+                headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
                 args: {
                     doctype: "Price List",
                     name: data.default_price_list
