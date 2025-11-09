@@ -476,6 +476,10 @@ function displayGroupItems(items) {
 let lastAddedRow = null;
 
 function addItemToTable(item) {
+    if (!item.simple_code) {
+        frappe.msgprint(`Item "${item.item_name}" doesnt have simple code. Please contact admin to add simple code.`);
+        return false;
+    }
     frappe.call({
     method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
     args: {

@@ -177,7 +177,7 @@ def get_item_price_by_simple_code(simple_code, price_list="Standard Selling"):
         as_dict=True
     )
     if not item:
-        return {"error": "Item not found"}
+        return {"error": "Item not founds"}
 
     # Get the actual price from the price list
     price = frappe.db.get_value(

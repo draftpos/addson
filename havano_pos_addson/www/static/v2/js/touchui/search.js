@@ -7,6 +7,7 @@ function searchItems(searchTerm, searchType = 'name') {
     searchTermCalculation=searchTerm;
     frappe.call({
         method: "havano_pos_addson.www.search.search_items", // update with your app name
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: { search_term: searchTerm, search_type: searchType },
         callback: function(response) {
             if (response.message) {
@@ -32,10 +33,6 @@ function displaySearchResults(items,searchTerm) {
     foundornot = false;
     
     if (items.length === 0) {
-        searchDropdown.innerHTML = '<div class="ha-search-result-item">No items found</div>';
-        // showHaPopupCustom('Item not found')
-     
-        console.log(foundornot);
        
         return;
     }
@@ -136,6 +133,7 @@ function selectItem(item, row, searchTerm) {
     }
     frappe.call({
         method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
         args: {
             simple_code: item.simple_code,
             price_list: "Standard Selling"
@@ -198,8 +196,8 @@ function selectItem(item, row, searchTerm) {
                     updateItemAmount(qtyField);
                     updateTotals();
 
-                    qtyField.focus();
-                    qtyField.select();
+                    // qtyField.focus();
+                    // qtyField.select();
 
                     isInSearchMode = false;
                     currentSearchTerm = '';

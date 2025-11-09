@@ -139,6 +139,79 @@ function bindEvents() {
         }
     });
     
+
+    function showAlert(message, callback) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = 0;
+    overlay.style.left = 0;
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = 9999;
+
+    // Create modal box
+    const box = document.createElement('div');
+    box.style.background = '#fff';
+    box.style.padding = '20px';
+    box.style.borderRadius = '8px';
+    box.style.minWidth = '300px';
+    box.style.textAlign = 'center';
+    box.innerHTML = `<p>${message}</p>`;
+// OK button
+const okBtn = document.createElement('button');
+okBtn.innerText = 'OK';
+okBtn.style.marginTop = '15px';
+okBtn.style.padding = '8px 20px';
+okBtn.style.borderRadius = '8px'; // rounded corners
+okBtn.style.backgroundColor = '#28a745'; // green background
+okBtn.style.color = 'white'; // text color
+okBtn.style.border = 'none';
+okBtn.style.cursor = 'pointer';
+okBtn.style.fontWeight = 'bold';
+okBtn.addEventListener('mouseover', () => {
+    okBtn.style.backgroundColor = '#218838'; // hover color
+});
+okBtn.addEventListener('mouseout', () => {
+    okBtn.style.backgroundColor = '#28a745'; // restore color
+});
+
+// Function to close modal
+const closeModal = () => {
+    document.body.removeChild(overlay);
+    document.removeEventListener('keydown', keyListener);
+    if (callback) callback();
+};
+
+// Click event
+okBtn.addEventListener('click', closeModal);
+
+box.appendChild(okBtn);
+overlay.appendChild(box);
+document.body.appendChild(overlay);
+
+// Keydown listener for Enter
+const keyListener = (e) => {
+    if (e.key === 'Enter') {
+        closeModal();
+    }
+};
+document.addEventListener('keydown', keyListener);
+
+// Optional: click on overlay to close
+overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+        closeModal();
+    }
+});
+
+}
+
+    
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // Skip if quantity popup is active (handled separately)
@@ -186,13 +259,21 @@ function bindEvents() {
         const searchTerm = activeEl.value.trim();
         if (!searchTerm) return;
 
-        if (foundornot === false){
-        console.log("----------impot  found");
-        console.log(foundornot);
-        showHaPopupCustom('Item not found');
-        const currentRow = activeEl.closest('tr');
-        activeEl.value = '';  // clears the field
-        activeEl.focus();     // optional: keep focus so user can type again
+        // if (foundornot === false){
+        // console.log("----------impot  found");
+        // console.log(foundornot);
+
+        if (foundornot === false) {
+        const fieldToFocus = activeEl;
+        activeEl.value = ''; // clear field
+
+       
+        showAlert('Item not found', function() {
+            fieldToFocus.focus();
+            fieldToFocus.select();
+        });
+      
+        
 
     }
    

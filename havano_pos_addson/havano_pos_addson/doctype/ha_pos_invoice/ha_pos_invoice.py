@@ -9,6 +9,30 @@ class HaPosInvoice(Document):
    pass
 
 @frappe.whitelist()
+def get_item_name_by_simple_code(simple_code):
+    """
+    Returns the item name based on simple_code.
+    """
+    if not simple_code:
+        return {"error": "Simple code is required."}
+
+    item = frappe.db.get_value(
+        "Item",
+        {"simple_code": simple_code},
+        ["name", "item_name"],
+        as_dict=True
+    )
+
+    if not item:
+        return {"error": f"No item found for simple code: {simple_code}"}
+
+    return {
+        "name": item.name,
+        "item_name": item.item_name
+    }
+
+
+@frappe.whitelist()
 def create_sales_invoice(customer, items, price_list=None, currency=None):
     """Create a new sales invoice"""
     import json
@@ -31,7 +55,7 @@ def create_sales_invoice(customer, items, price_list=None, currency=None):
     # Add items to the invoice
     for item_data in items:
         invoice.append("items", {
-            "item_code": item_data.get("item_code"),
+            "item_code": get_item_name_by_simple_code(item_data.get("item_code")),
             "qty": item_data.get("qty"),
             "rate": item_data.get("rate")
         })
