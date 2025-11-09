@@ -45,6 +45,7 @@ function displaySearchResults(items,searchTerm) {
     }
     
     items.forEach((item, index) => {
+        console.log(item);
 
       
         const resultItem = document.createElement('div');
@@ -52,7 +53,7 @@ function displaySearchResults(items,searchTerm) {
         if (index === 0) resultItem.classList.add('ha-search-result-active');
         resultItem.innerHTML = `
             <div>
-                <span class="ha-item-code">${item.name}</span>
+                <span class="ha-item-code">${item.simple_code}</span>
                 <span class="ha-item-name">${item.item_name || item.name}</span>
             </div>
             <div class="ha-item-price">$${(item.valuation_rate || 0).toFixed(2)}</div>
@@ -132,9 +133,10 @@ lastAddedRoww = null;
 
 function selectItem(item, row, searchTerm) {
     if (!item.simple_code) {
-        frappe.msgprint(`Item "${item.itemName}" rate is empty. Please contact admin to add simple code for this item.`);
+        frappe.msgprint(`Item "${item.item_name}" doesnt have simple code. Please contact admin to add simple code for this item.`);
         return false;
     }
+    console.log(item);
     frappe.call({
         method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
         args: {
@@ -182,7 +184,7 @@ function selectItem(item, row, searchTerm) {
             if (lastAddedRoww) {
                 const lastItemCode = lastAddedRoww.querySelector('.item-code').value;
 
-                if (lastItemCode === (item.name || searchTerm)) {
+                if (lastItemCode === (item.simple_code || searchTerm)) {
                     bb = "not new";
                     let qtyField = lastAddedRoww.querySelector('.item-qty');
                     let currentQty = parseFloat(qtyField.value) || 0;
@@ -221,7 +223,7 @@ function selectItem(item, row, searchTerm) {
                 row.querySelector('.item-qty').value = finalValue;
             } else {
                 bb = "new";
-                row.querySelector('.item-code').value = item.name;
+                row.querySelector('.item-code').value = item.simple_code;
                 row.querySelector('.item-name').value = item.item_name || item.name;
                 row.querySelector('.item-rate').value = itemRate.toFixed(2);
                 row.querySelector('.item-uom').value = item.stock_uom || 'Nos';

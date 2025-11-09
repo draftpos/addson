@@ -202,7 +202,7 @@ function loadAllItems(callback) {
         method: "frappe.client.get_list",
         args: {
             doctype: "Item",
-            fields: ["name", "item_name", "description", "stock_uom", "valuation_rate"],
+            fields: ["name", "item_name", "description", "stock_uom", "valuation_rate","simple_code"],
             limit: 1000
         },
         callback: function(response) {

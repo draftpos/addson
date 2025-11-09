@@ -7,6 +7,7 @@ from frappe.utils import format_datetime
 
 @frappe.whitelist()
 def search_items(search_term, search_type="name"):
+    print("search hit----------------")
     """
     Search Items by name, item_name, or simple_code.
     For simple_code search, match the first 7 digits.
@@ -32,7 +33,7 @@ def search_items(search_term, search_type="name"):
 
     items = frappe.db.get_all(
         "Item",
-        fields=["name", "item_name", "description", "stock_uom", "valuation_rate", "scale_type", "simple_code"],
+        fields=["name", "simple_code","item_name", "description", "stock_uom", "valuation_rate", "scale_type"],
         filters=filters,
         limit=20
     )
