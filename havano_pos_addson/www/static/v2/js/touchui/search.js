@@ -45,8 +45,6 @@ function displaySearchResults(items,searchTerm) {
     }
     
     items.forEach((item, index) => {
-        console.log(item);
-
       
         const resultItem = document.createElement('div');
         resultItem.className = 'ha-search-result-item';
@@ -133,10 +131,9 @@ lastAddedRoww = null;
 
 function selectItem(item, row, searchTerm) {
     if (!item.simple_code) {
-        frappe.msgprint(`Item "${item.item_name}" doesnt have simple code. Please contact admin to add simple code for this item.`);
+        frappe.msgprint(`Item "${item.item_name}" doesnt have simple code. Please contact admin to add simple code.`);
         return false;
     }
-    console.log(item);
     frappe.call({
         method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
         args: {
@@ -165,7 +162,7 @@ function selectItem(item, row, searchTerm) {
 
             if (itemRate === 0 && !isGiftItem) {
                 const itemName = item.item_name || item.name || 'Unknown Item';
-                frappe.msgprint(`Item "${itemName}" rate is empty. Please contact admin to add rate for this item.`);
+                frappe.msgprint(`Item "${itemName}" price not set. Please contact admin to set price.`);
 
                 row.querySelector('.item-code').value = '';
                 row.querySelector('.item-name').value = '';

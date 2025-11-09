@@ -476,52 +476,83 @@ function displayGroupItems(items) {
 let lastAddedRow = null;
 
 function addItemToTable(item) {
-    const itemRate = parseFloat(item.valuation_rate) || 0;
-    const itemDescription = item.description || '';
-    const isGiftItem = itemDescription.toLowerCase().includes('gift');
+    frappe.call({
+    method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
+    args: {
+        simple_code: item.simple_code,
+        price_list: "Standard Selling"
+    },
+    callback: function(r) {
+        if (r.message && !r.message.error) {
+            console.log("Item price:", r.message.price);
+            real_price= r.message.price
 
-    if (itemRate === 0 && !isGiftItem) {
-        const itemName = item.item_name || item.name || 'Unknown Item';
-        frappe.msgprint(`Item ${itemName} rate is empty. Please contact admin to add rate for this item.`);
-        return false;
-    }
+            // Set the fetched price to the item
+            item.valuation_rate = r.message.price;
 
-    // If previous row exists and its code matches, increment its quantity
-    if (lastAddedRow) {
-        const prevCode = lastAddedRow.querySelector('.item-code').value;
-        if (prevCode === item.name) {
-            const qtyField = lastAddedRow.querySelector('.item-qty');
-            const currentQty = parseFloat(qtyField.value) || 0;
-            qtyField.value = currentQty + 1;
-            updateItemAmount(qtyField);
+            // Add the whole addItemToTable function here
+            console.log(item.simple_code);
+            if (!item.simple_code) {
+                frappe.msgprint(`Item "${item.item_name}" doesnt have simple code. Please contact admin to add simple code for this item.`);
+                return false;
+            }
+            const itemRate = parseFloat(real_price) || 0;
+            const itemDescription = item.description || '';
+            const isGiftItem = itemDescription.toLowerCase().includes('gift');
 
+            if (itemRate === 0 && !isGiftItem) {
+                const itemName = item.item_name || item.name || 'Unknown Item';
+                frappe.msgprint(`Item ${itemName} item price not set. Please contact admin to set price.`);
+                return false;
+            }
+
+            // If previous row exists and its code matches, increment its quantity
+            if (lastAddedRow) {
+                const prevCode = lastAddedRow.querySelector('.item-code').value;
+                if (prevCode === item.simple_code) {
+                    const qtyField = lastAddedRow.querySelector('.item-qty');
+                    const currentQty = parseFloat(qtyField.value) || 0;
+                    qtyField.value = currentQty + 1;
+                    updateItemAmount(qtyField);
+
+                    qtyField.focus();
+                    qtyField.select();
+
+                    return 'quantity_updated';
+                }
+            }
+
+            // Otherwise, add a new row
+            addNewRow();
+            const rows = Array.from(itemsTableBody.querySelectorAll('tr'));
+            const newRow = rows[rows.length - 1];
+
+            removeEmptyRowsAbove(newRow);
+
+            newRow.querySelector('.item-code').value = item.simple_code;
+            newRow.querySelector('.item-name').value = item.item_name || item.name;
+            newRow.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+            newRow.querySelector('.item-rate').value = itemRate.toFixed(2);
+
+            updateItemAmount(newRow.querySelector('.item-qty'));
+
+            const qtyField = newRow.querySelector('.item-qty');
             qtyField.focus();
             qtyField.select();
 
-            return 'quantity_updated';
+            // Update last added row reference
+            lastAddedRow = newRow;
+
+            return 'new_item_added';
+
+        } else if (r.message && r.message.error) {
+            console.error("Error from server:", r.message.error);
+        } else {
+            console.log("No item found for simple code:", item.simple_code);
+            frappe.msgprint(`No price found for item "${item.item_name}".`);
         }
+    },
+    error: function(err) {
+        console.error("Request failed:", err);
     }
-
-    // Otherwise, add a new row
-    addNewRow();
-    const rows = Array.from(itemsTableBody.querySelectorAll('tr'));
-    const newRow = rows[rows.length - 1];
-
-    removeEmptyRowsAbove(newRow);
-
-    newRow.querySelector('.item-code').value = item.name;
-    newRow.querySelector('.item-name').value = item.item_name || item.name;
-    newRow.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-    newRow.querySelector('.item-rate').value = itemRate.toFixed(2);
-
-    updateItemAmount(newRow.querySelector('.item-qty'));
-
-    const qtyField = newRow.querySelector('.item-qty');
-    qtyField.focus();
-    qtyField.select();
-
-    // Update last added row reference
-    lastAddedRow = newRow;
-
-    return 'new_item_added';
-}
+});}

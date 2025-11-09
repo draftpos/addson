@@ -85,7 +85,7 @@ def get_items_by_group(item_group=None, page=0, page_size=20):
         
         # Get items with pagination
         items = frappe.get_all("Item",
-            fields=["name", "item_name", "description", "stock_uom", "valuation_rate", "item_group"],
+            fields=["name", "item_name", "simple_code","description", "stock_uom", "valuation_rate", "item_group"],
             filters=filters,
             order_by="item_name",
             start=start,
