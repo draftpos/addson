@@ -1,5 +1,8 @@
 import frappe
 from frappe import _
+from frappe.utils import flt, now_datetime
+from frappe.utils import format_datetime
+
 
 
 @frappe.whitelist()
@@ -55,85 +58,136 @@ def get_print_template():
         frappe.throw(*("Error fetching print template: {0}").format(str(e)))
 
 
+@frappe.whitelist()
+def get_user_settings_dict():
+    current_user = frappe.session.user
+    settings = frappe.get_doc("HA POS Setting", "SETTINGS-01")
+    
+    # Check what’s actually in the table
+    print("Child table rows:", settings.user_table_settin)
+    
+    for row in settings.user_table_settin:
+        print(row.user, row.full_name, row.default_account)
 
-import frappe
-from frappe.utils import flt, now_datetime
-from frappe.utils import format_datetime
+    # Find the row
+    user_row = next((row for row in settings.user_table_settin if row.user == current_user), None)
+    
+    if not user_row:
+        return 
+
+    # Convert row to dict
+    user_dict = {field: getattr(user_row, field) for field in user_row.meta.get_valid_columns()}
+    return user_dict
+
+
 
 @frappe.whitelist()
 def get_invoice_json(invoice_name):
+    if get_user_settings_dict():
+        """
+        Returns a structured JSON for a given Sales Invoice
+        """
+        try:
+            invoice = frappe.get_doc("Sales Invoice", invoice_name)
+
+            company = frappe.get_doc("Company", invoice.company)
+
+            # Build item list
+            items = []
+            for item in invoice.items:
+                items.append({
+                    "ProductName": item.item_name,
+                    "productid": item.item_code,
+                    "Qty": flt(item.qty),
+                    "Price": flt(item.rate),
+                    "Amount": flt(item.amount),
+                    "tax_type": item.tax_type if hasattr(item, "tax_type") else "VAT",
+                    "tax_rate": str(item.tax_rate) if hasattr(item, "tax_rate") else "15.0",
+                    "tax_amount": str(item.tax_amount) if hasattr(item, "tax_amount") else "0.00"
+                })
+
+            data = {
+                "CompanyName": company.company_name,
+                "CompanyAddress": company.default_address or "",
+                "City": company.city or "",
+                "State": company.state or "",
+                "postcode": company.pincode or "",
+                "contact": company.phone or "",
+                "CompanyEmail": company.email_id or "",
+                "TIN": company.tax_id or "",
+                "VATNo": company.vat or "",
+                "Tel": company.phone or "",
+                "InvoiceNo": invoice.name,
+                "InvoiceDate":str(invoice.creation),
+                "CashierName": invoice.owner,
+                "CustomerName": invoice.customer_name,
+                "CustomerContact": invoice.contact_display or invoice.customer_name,
+                "CustomerTradeName": getattr(invoice, "customer_trade_name", None),
+                "CustomerEmail": invoice.contact_email or None,
+                "CustomerTIN": getattr(invoice, "tax_id", None),
+                "CustomerVAT": getattr(invoice, "vat_number", None),
+                "Customeraddress": invoice.customer_address or None,
+                "itemlist": items,
+                "AmountTendered": str(invoice.paid_amount),
+                "Change": str(invoice.outstanding_amount),
+                "Currency": invoice.currency,
+                "Footer": "Thank you for your purchase!",
+                "MultiCurrencyDetails": [
+                    {
+                        "Key": invoice.currency,
+                        "Value": flt(invoice.grand_total)
+                    }
+                ],
+                "DeviceID": getattr(invoice, "device_id", "None"),
+                "DeviceSerial": getattr(invoice, "device_serial", ""),
+                "FiscalDay": "",
+                "ReceiptNo": "",
+                "CustomerRef": getattr(invoice, "customer_ref", "None"),
+                "VCode": "",
+                "QRCode": "",
+                "DiscAmt": str(flt(invoice.discount_amount)),
+                "Subtotal": flt(invoice.base_net_total),
+                "TotalVat": str(flt(invoice.total_taxes_and_charges)),
+                "GrandTotal": flt(invoice.grand_total),
+                "TaxType": "Standard VAT",
+                "PaymentMode": invoice.payment_terms_template or "Cash"
+            }
+
+            return data
+
+        except frappe.DoesNotExistError:
+            frappe.throw("Sales Invoice {0} does not exist".format(invoice_name))
+        except Exception as e:
+            frappe.throw("Error generating invoice JSON: {0}".format(str(e)))
+
+
+import frappe
+
+@frappe.whitelist()
+def get_item_price_by_simple_code(simple_code, price_list="Standard Selling"):
     """
-    Returns a structured JSON for a given Sales Invoice
+    Returns the item info and price from a specific price list based on the simple_code
     """
-    try:
-        invoice = frappe.get_doc("Sales Invoice", invoice_name)
+    # Get the item by simple_code
+    item = frappe.db.get_value(
+        "Item",
+        {"simple_code": simple_code},
+        ["name", "item_name", "stock_uom"],
+        as_dict=True
+    )
+    if not item:
+        return {"error": "Item not found"}
 
-        company = frappe.get_doc("Company", invoice.company)
+    # Get the actual price from the price list
+    price = frappe.db.get_value(
+        "Item Price",
+        {"item_code": item.name, "price_list": price_list},
+        "price_list_rate"
+    ) or 0.0
 
-        # Build item list
-        items = []
-        for item in invoice.items:
-            items.append({
-                "ProductName": item.item_name,
-                "productid": item.item_code,
-                "Qty": flt(item.qty),
-                "Price": flt(item.rate),
-                "Amount": flt(item.amount),
-                "tax_type": item.tax_type if hasattr(item, "tax_type") else "VAT",
-                "tax_rate": str(item.tax_rate) if hasattr(item, "tax_rate") else "15.0",
-                "tax_amount": str(item.tax_amount) if hasattr(item, "tax_amount") else "0.00"
-            })
-
-        data = {
-            "CompanyName": company.company_name,
-            "CompanyAddress": company.default_address or "",
-            "City": company.city or "",
-            "State": company.state or "",
-            "postcode": company.pincode or "",
-            "contact": company.phone or "",
-            "CompanyEmail": company.email_id or "",
-            "TIN": company.tax_id or "",
-            "VATNo": company.vat or "",
-            "Tel": company.phone or "",
-            "InvoiceNo": invoice.name,
-            "InvoiceDate":str(invoice.creation),
-            "CashierName": invoice.owner,
-            "CustomerName": invoice.customer_name,
-            "CustomerContact": invoice.contact_display or invoice.customer_name,
-            "CustomerTradeName": getattr(invoice, "customer_trade_name", None),
-            "CustomerEmail": invoice.contact_email or None,
-            "CustomerTIN": getattr(invoice, "tax_id", None),
-            "CustomerVAT": getattr(invoice, "vat_number", None),
-            "Customeraddress": invoice.customer_address or None,
-            "itemlist": items,
-            "AmountTendered": str(invoice.paid_amount),
-            "Change": str(invoice.outstanding_amount),
-            "Currency": invoice.currency,
-            "Footer": "Thank you for your purchase!",
-            "MultiCurrencyDetails": [
-                {
-                    "Key": invoice.currency,
-                    "Value": flt(invoice.grand_total)
-                }
-            ],
-            "DeviceID": getattr(invoice, "device_id", "None"),
-            "DeviceSerial": getattr(invoice, "device_serial", ""),
-            "FiscalDay": "",
-            "ReceiptNo": "",
-            "CustomerRef": getattr(invoice, "customer_ref", "None"),
-            "VCode": "",
-            "QRCode": "",
-            "DiscAmt": str(flt(invoice.discount_amount)),
-            "Subtotal": flt(invoice.base_net_total),
-            "TotalVat": str(flt(invoice.total_taxes_and_charges)),
-            "GrandTotal": flt(invoice.grand_total),
-            "TaxType": "Standard VAT",
-            "PaymentMode": invoice.payment_terms_template or "Cash"
-        }
-
-        return data
-
-    except frappe.DoesNotExistError:
-        frappe.throw("Sales Invoice {0} does not exist".format(invoice_name))
-    except Exception as e:
-        frappe.throw("Error generating invoice JSON: {0}".format(str(e)))
+    return {
+        "item_code": item.name,
+        "item_name": item.item_name,
+        "uom": item.stock_uom or "Nos",
+        "price": price
+    }

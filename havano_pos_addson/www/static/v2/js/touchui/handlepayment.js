@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (response.message && response.message.exchange_rate) {
           
       // exchangeRates[`${fromCurrency}_${toCurrency}`] = 1 / response.message.exchange_rate;
-      exchangeRates[`${fromCurrency}_${toCurrency}`] = roundToTwo(1 / response.message.exchange_rate);
+      exchangeRates[`${fromCurrency}_${toCurrency}`] = roundToTwo(response.message.exchange_rate);
 
 
         } else {

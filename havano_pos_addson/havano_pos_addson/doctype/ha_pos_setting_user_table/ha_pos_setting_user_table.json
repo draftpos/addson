@@ -10,7 +10,9 @@
   "default_warehouse",
   "company",
   "cost_center",
-  "customer"
+  "customer",
+  "full_name",
+  "default_account"
  ],
  "fields": [
   {
@@ -42,13 +44,25 @@
    "fieldname": "customer",
    "fieldtype": "Data",
    "label": "Customer"
+  },
+  {
+   "fetch_from": "user.full_name",
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "label": "Full Name"
+  },
+  {
+   "fieldname": "default_account",
+   "fieldtype": "Link",
+   "label": "Default Account",
+   "options": "Account"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-07 23:38:05.201029",
+ "modified": "2025-11-09 11:01:37.224195",
  "modified_by": "Administrator",
  "module": "Havano Pos Addson",
  "name": "HA POS Setting User Table",

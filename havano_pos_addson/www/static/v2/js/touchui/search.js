@@ -129,94 +129,122 @@ var bb="new";
 // Keep track of the last row where an item was added
 
 lastAddedRoww = null;
+
 function selectItem(item, row, searchTerm) {
-    console.log(item);
-    // Remove empty rows above before selecting the item
-    removeEmptyRowsAbove(row);
-
-    const itemRate = parseFloat(item.valuation_rate) || 0;
-    const itemDescription = item.description || '';
-    const isGiftItem = itemDescription.toLowerCase().includes('gift');
-
-    // Handle zero rate for non-gift items
-    if (itemRate === 0 && !isGiftItem) {
-        const itemName = item.item_name || item.name || 'Unknown Item';
-        frappe.msgprint(`Item "${itemName}" rate is empty. Please contact admin to add rate for this item.`);
-
-        row.querySelector('.item-code').value = '';
-        row.querySelector('.item-name').value = '';
-        row.querySelector('.item-uom').value = 'Nos';
-        row.querySelector('.item-rate').value = '0.00';
-        row.querySelector('.item-qty').value = '1';
-        row.querySelector('.item-amount').value = '0.00';
-        updateTotals();
-
-        isInSearchMode = false;
-        currentSearchTerm = '';
+    if (!item.simple_code) {
+        frappe.msgprint(`Item "${item.itemName}" rate is empty. Please contact admin to add simple code for this item.`);
         return false;
     }
+    frappe.call({
+        method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
+        args: {
+            simple_code: item.simple_code,
+            price_list: "Standard Selling"
+        },
+        callback: function(r) {
+            var real_price = 0;
 
-    // --- Check if last added row has the same item ---
-    if (lastAddedRoww) {
-        const lastItemCode = lastAddedRoww.querySelector('.item-code').value;
-
-        console.log(lastItemCode);
-        console.log(item.name);
-        if (lastItemCode === (item.name || searchTerm)) {
-            bb="not new";
-            let qtyField = lastAddedRoww.querySelector('.item-qty');
-            let currentQty = parseFloat(qtyField.value) || 0;
-
-            if (item.scale_type === "Weight Based Scale") {
-                let middlePart = String(searchTerm).slice(7, -1);
-                let numericValue = parseInt(middlePart, 10) || 0;
-                currentQty += numericValue / 1000;
+            if (r.message && !r.message.error) {
+                console.log("Item price:", r.message.price);
+                real_price = r.message.price;
+            } else if (r.message && r.message.error) {
+                console.error("Error from server:", r.message.error);
             } else {
-                currentQty += 1;
+                console.log("No item found for simple code:", item.simple_code);
             }
 
-            qtyField.value = currentQty.toFixed(3);
-            updateItemAmount(qtyField);
+            console.log(item);
+            removeEmptyRowsAbove(row);
+            console.log("Real price is " + real_price);
+
+            const itemRate = real_price || 0;
+            const itemDescription = item.description || '';
+            const isGiftItem = itemDescription.toLowerCase().includes('gift');
+
+            if (itemRate === 0 && !isGiftItem) {
+                const itemName = item.item_name || item.name || 'Unknown Item';
+                frappe.msgprint(`Item "${itemName}" rate is empty. Please contact admin to add rate for this item.`);
+
+                row.querySelector('.item-code').value = '';
+                row.querySelector('.item-name').value = '';
+                row.querySelector('.item-uom').value = 'Nos';
+                row.querySelector('.item-rate').value = '0.00';
+                row.querySelector('.item-qty').value = '1';
+                row.querySelector('.item-amount').value = '0.00';
+                updateTotals();
+
+                isInSearchMode = false;
+                currentSearchTerm = '';
+                return;
+            }
+
+            // Check if last added row has the same item
+            if (lastAddedRoww) {
+                const lastItemCode = lastAddedRoww.querySelector('.item-code').value;
+
+                if (lastItemCode === (item.name || searchTerm)) {
+                    bb = "not new";
+                    let qtyField = lastAddedRoww.querySelector('.item-qty');
+                    let currentQty = parseFloat(qtyField.value) || 0;
+
+                    if (item.scale_type === "Weight Based Scale") {
+                        let middlePart = String(searchTerm).slice(7, -1);
+                        let numericValue = parseInt(middlePart, 10) || 0;
+                        currentQty += numericValue / 1000;
+                    } else {
+                        currentQty += 1;
+                    }
+
+                    qtyField.value = currentQty.toFixed(3);
+                    updateItemAmount(qtyField);
+                    updateTotals();
+
+                    qtyField.focus();
+                    qtyField.select();
+
+                    isInSearchMode = false;
+                    currentSearchTerm = '';
+                    return; // stop here, no new row
+                }
+            }
+
+            // Populate current row as new item
+            if (item.scale_type === "Weight Based Scale") {
+                let middlePart = String(searchTermCalculation).slice(7, -1);
+                let numericValue = parseInt(middlePart, 10) || 0;
+                let finalValue = numericValue / 1000;
+
+                row.querySelector('.item-code').value = searchTermCalculation;
+                row.querySelector('.item-name').value = item.item_name || item.name;
+                row.querySelector('.item-rate').value = itemRate.toFixed(2);
+                row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+                row.querySelector('.item-qty').value = finalValue;
+            } else {
+                bb = "new";
+                row.querySelector('.item-code').value = item.name;
+                row.querySelector('.item-name').value = item.item_name || item.name;
+                row.querySelector('.item-rate').value = itemRate.toFixed(2);
+                row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+                row.querySelector('.item-qty').value = 1;
+            }
+
+            updateItemAmount(row.querySelector('.item-qty'));
             updateTotals();
 
-            qtyField.focus();
-            qtyField.select();
+            // Update the last added row reference
+            lastAddedRoww = row;
+
+            // Add a new row after current
+            const nextRow = row.nextElementSibling;
+            if (!nextRow) {
+                addNewRow(); // <-- this ensures new row is added
+            }
 
             isInSearchMode = false;
             currentSearchTerm = '';
-            return 'quantity_increased';
+        },
+        error: function(err) {
+            console.error("Request failed:", err);
         }
-    }
-
-    // --- Otherwise, populate the current row as new item ---
-    if (item.scale_type === "Weight Based Scale") {
-        console.log("----------search term------"+searchTermCalculation);
-        let middlePart = String(searchTermCalculation).slice(7, -1);
-        let numericValue = parseInt(middlePart, 10) || 0;
-        let finalValue = numericValue / 1000;
-
-        row.querySelector('.item-code').value = searchTermCalculation;
-        row.querySelector('.item-name').value = item.item_name || item.name;
-        row.querySelector('.item-rate').value = itemRate.toFixed(2);
-        row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-        row.querySelector('.item-qty').value = finalValue;
-    } else {
-        bb="new";
-        row.querySelector('.item-code').value = item.name;
-        row.querySelector('.item-name').value = item.item_name || item.name;
-        row.querySelector('.item-rate').value = itemRate.toFixed(2);
-        row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
-        row.querySelector('.item-qty').value = 1;
-    }
-
-    updateItemAmount(row.querySelector('.item-qty'));
-    updateTotals();
-
-    // Update the last added row reference
-    lastAddedRoww = row;
-
-    isInSearchMode = false;
-    currentSearchTerm = '';
-
-    return 'new_item_added';
+    });
 }

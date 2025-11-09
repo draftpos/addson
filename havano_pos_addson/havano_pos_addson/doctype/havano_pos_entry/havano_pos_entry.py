@@ -49,6 +49,13 @@ def save_pos_entries(payments, total_of_all_items):
     if total_valid == 0:
         frappe.throw("No valid payments provided.")
 
+    methods_settings=get_payment_methods()
+    user_settings = get_user_settings_dict()
+    print(user_settings)
+    print(user_settings.get("cost_center"))  # access any field easily
+
+
+
     for idx, p in enumerate(valid_payments):
         print(f"Processing payment {idx + 1}/{len(valid_payments)}:")
         print(json.dumps(p, indent=4))  # Pretty-print the dict
@@ -57,12 +64,24 @@ def save_pos_entries(payments, total_of_all_items):
         currency = p.get("currency") or "USD"
         raw_amount = float(p.get("amount") or 0)
 
+        pm_settings = methods_settings.get(p.get("payment_method").upper())  # ensure uppercase
+        if pm_settings:
+            exchange_rate = pm_settings['exchange_rate']
+            current_currency = pm_settings['currency']
+            current_account = pm_settings['account']
+            current_symbol = pm_settings['currency_symbol']
+            print("Exchange rate:", exchange_rate)
+        else:
+            frappe.throw(f"Payment method {payment_method} not found in settings")
+
+
+
         # Always reinit base_amount
         base_amount = 0.0
 
         # Convert to base currency
         if currency != base_currency:
-            base_amount = round(raw_amount / 30, 2)  # example conversion
+            base_amount = round(raw_amount / exchange_rate, 2)  # example conversion
         else:
             base_amount = raw_amount
 
@@ -79,8 +98,8 @@ def save_pos_entries(payments, total_of_all_items):
         # Subtract after calculation
         current_amount = round(current_amount - base_amount, 2)
 
-        # --- Create the POS Entry only for valid base_amounts ---
-        print(f"Index: {idx}, Base Amount: {base_amount}, Current Remaining: {current_amount}")
+  
+     
 
         if base_amount > 0:
             doc = frappe.get_doc({
@@ -88,7 +107,7 @@ def save_pos_entries(payments, total_of_all_items):
                 "invoice_number": invoice_number,
                 "invoice_date": p.get("invoice_date") or nowdate(),
                 "payment_method": p.get("payment_method"),
-                "amount": base_amount if currency == base_currency else base_amount * 30,
+                "amount": base_amount if currency == base_currency else base_amount * exchange_rate,
                 "currency": currency,
                 "base_amount": base_amount,
                 "base_currency": base_currency,
@@ -99,22 +118,24 @@ def save_pos_entries(payments, total_of_all_items):
             frappe.db.commit()
             results.append(doc.name)
 
-            # Create corresponding Payment Entry
-            create_payment_entry(
-                company="Boring",
+            a=create_payment_entry(
+                company=user_settings["company"],
                 payment_type="Receive",
                 party_type="Customer",
-                party="walking customer",
-                paid_from="Debtors - B",
-                paid_from_currency="USD",
-                paid_to="ZIG CASH BOOK - B",
-                paid_to_currency=currency,
-                paid_amount=base_amount,
-                received_amount=base_amount,
-                mode_of_payment=p.get("payment_method"),
+                party=user_settings.get("customer"),
+                paid_from=user_settings.get("default_account"),
+                paid_from_currency=base_currency,
+                paid_to=current_account,
+                paid_to_currency=current_currency,
+                paid_amount=base_amount,               # invoice currency
+                received_amount=base_amount * exchange_rate,         # actual cash received
+                source_exchange_rate=1.0,      # USD -> USD
+                target_exchange_rate=exchange_rate,     # 1 USD = 30 ZIG
+                mode_of_payment= p.get("payment_method"),
                 reference_doctype="Sales Invoice",
                 reference_name=invoice_number
             )
+            print(a)
 
             # Track shift totals
             shift_name = p.get("shift_name")
@@ -140,8 +161,6 @@ def save_pos_entries(payments, total_of_all_items):
         "shift_summary": shift_updates
     }
 
-
-
 @frappe.whitelist()
 def create_payment_entry(
     *,
@@ -155,13 +174,16 @@ def create_payment_entry(
     paid_to_currency,
     paid_amount,
     received_amount,
-    mode_of_payment,
+    source_exchange_rate=1.0,
+    target_exchange_rate=1.0,
+    mode_of_payment=None,
     posting_date=None,
     reference_doctype=None,
     reference_name=None
 ):
     """
     Creates and submits a Payment Entry in ERPNext with named parameters only.
+    Supports multi-currency payments with explicit exchange rates.
     """
     try:
         from frappe.utils import nowdate
@@ -180,6 +202,8 @@ def create_payment_entry(
             "paid_to_account_currency": paid_to_currency,
             "paid_amount": paid_amount,
             "received_amount": received_amount,
+            "source_exchange_rate": source_exchange_rate,
+            "target_exchange_rate": target_exchange_rate,
             "mode_of_payment": mode_of_payment,
             "posting_date": posting_date
         })
@@ -189,7 +213,7 @@ def create_payment_entry(
             payment_entry.append("references", {
                 "reference_doctype": reference_doctype,
                 "reference_name": reference_name,
-                "allocated_amount": received_amount
+                "allocated_amount": paid_amount  # allocation is always in invoice currency
             })
 
         payment_entry.flags.ignore_permissions = True
@@ -212,8 +236,40 @@ def create_payment_entry(
             "data": None
         }
 
+@frappe.whitelist()
+def get_user_settings_dict():
+    current_user = frappe.session.user
+    settings = frappe.get_doc("HA POS Setting", "SETTINGS-01")
+    
+    # Check what’s actually in the table
+    print("Child table rows:", settings.user_table_settin)
+    
+    for row in settings.user_table_settin:
+        print(row.user, row.full_name, row.default_account)
+
+    # Find the row
+    user_row = next((row for row in settings.user_table_settin if row.user == current_user), None)
+    
+    if not user_row:
+        frappe.throw(f"No settings found for user {current_user}")
+
+    # Convert row to dict
+    user_dict = {field: getattr(user_row, field) for field in user_row.meta.get_valid_columns()}
+    return user_dict
 
 
+@frappe.whitelist()
+def get_payment_methods():
+    settings = frappe.get_doc("HA POS Setting", "SETTINGS-01")
+    pm_dict = {}
+    for pm in settings.selected_payment_methods:
+        pm_dict[pm.mode_of_payment.upper()] = {
+            "exchange_rate": pm.exchange_rate,
+            "currency": pm.currency.upper(),
+            "currency_symbol": pm.currency_symbol,
+            "account": pm.account
+        }
+    return pm_dict
 
 
 # @frappe.whitelist()
