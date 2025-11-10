@@ -181,6 +181,7 @@ function selectItem(item, row, searchTerm) {
 
                 if (lastItemCode === (item.simple_code || searchTerm)) {
                     bb = "not new";
+                    console.log("not addin")
                     let qtyField = lastAddedRoww.querySelector('.item-qty');
                     let currentQty = parseFloat(qtyField.value) || 0;
 
@@ -217,6 +218,7 @@ function selectItem(item, row, searchTerm) {
                 row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
                 row.querySelector('.item-qty').value = finalValue;
             } else {
+                console.log("adding new product")
                 bb = "new";
                 row.querySelector('.item-code').value = item.simple_code;
                 row.querySelector('.item-name').value = item.item_name || item.name;

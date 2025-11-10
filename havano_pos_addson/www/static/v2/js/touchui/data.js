@@ -202,6 +202,7 @@ function loadPriceLists(callback) {
 
 // Load all items
 function loadAllItems(callback) {
+    console.log("getting all items");
     frappe.call({
         method: "frappe.client.get_list",
         headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },

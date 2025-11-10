@@ -192,6 +192,26 @@ function clearAllItems() {
         clearCartBtn.click();
     }
 }
+function refreshItemsTable() {
+    // Completely clear table content
+    itemsTableBody.innerHTML = '';
+
+    // Add a new empty row
+    addNewRow();
+
+    // Reset totals and state
+    updateTotals();
+
+    // Refocus on the item code field
+    setTimeout(() => {
+        const newRow = itemsTableBody.querySelector('tr');
+        if (newRow) {
+            const itemCodeInput = newRow.querySelector('.item-code');
+            itemCodeInput.focus();
+            itemCodeInput.select();
+        }
+    }, 100);
+}
 
 // Clear a specific row
 function clearRow(row) {

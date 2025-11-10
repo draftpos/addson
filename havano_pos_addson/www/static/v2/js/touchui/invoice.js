@@ -348,6 +348,7 @@ function saveSalesInvoice(shouldPrint = false) {
                             itemsTableBody.innerHTML = '';
                             addNewRow();
                             updateTotals();
+                            lastAddedRoww = null;
                         }, 100);
                     } else {
                         // console.error("Invalid response structure:", response.message);
