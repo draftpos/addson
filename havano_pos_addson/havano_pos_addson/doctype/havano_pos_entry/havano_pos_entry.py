@@ -117,25 +117,26 @@ def save_pos_entries(payments, total_of_all_items):
             doc.submit()
             frappe.db.commit()
             results.append(doc.name)
-
-            a=create_payment_entry(
-                company=user_settings["company"],
-                payment_type="Receive",
-                party_type="Customer",
-                party=user_settings.get("customer"),
-                paid_from=user_settings.get("default_account"),
-                paid_from_currency=base_currency,
-                paid_to=current_account,
-                paid_to_currency=current_currency,
-                paid_amount=base_amount,               # invoice currency
-                received_amount=base_amount * exchange_rate,         # actual cash received
-                source_exchange_rate=1.0,      # USD -> USD
-                target_exchange_rate=exchange_rate,     # 1 USD = 30 ZIG
-                mode_of_payment= p.get("payment_method"),
-                reference_doctype="Sales Invoice",
-                reference_name=invoice_number
-            )
-            print(a)
+            if  p.get("payment_method").upper() != "CREDIT":
+                print("not credit")
+                a=create_payment_entry(
+                    company=user_settings["company"],
+                    payment_type="Receive",
+                    party_type="Customer",
+                    party=user_settings.get("customer"),
+                    paid_from=user_settings.get("default_account"),
+                    paid_from_currency=base_currency,
+                    paid_to=current_account,
+                    paid_to_currency=current_currency,
+                    paid_amount=base_amount,               # invoice currency
+                    received_amount=base_amount * exchange_rate,         # actual cash received
+                    source_exchange_rate=1.0,      # USD -> USD
+                    target_exchange_rate=exchange_rate,     # 1 USD = 30 ZIG
+                    mode_of_payment= p.get("payment_method"),
+                    reference_doctype="Sales Invoice",
+                    reference_name=invoice_number
+                )
+                print(a)
 
             # Track shift totals
             shift_name = p.get("shift_name")
@@ -236,8 +237,9 @@ def create_payment_entry(
             "data": None
         }
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_user_settings_dict():
+    print("hit-----------------------")
     current_user = frappe.session.user
     settings = frappe.get_doc("HA POS Setting", "SETTINGS-01")
     
@@ -257,6 +259,26 @@ def get_user_settings_dict():
     user_dict = {field: getattr(user_row, field) for field in user_row.meta.get_valid_columns()}
     return user_dict
 
+
+@frappe.whitelist(allow_guest=True)
+def user_permitted():
+    print("hit-----------------------")
+    current_user = frappe.session.user
+    settings = frappe.get_doc("HA POS Setting", "SETTINGS-01")
+    
+    # Check what’s actually in the table
+    print("Child table rows:", settings.user_table_settin)
+    
+    for row in settings.user_table_settin:
+        print(row.user, row.full_name, row.default_account)
+
+    # Find the row
+    user_row = next((row for row in settings.user_table_settin if row.user == current_user), None)
+    
+    if not user_row:
+        return "404"
+
+    return "200"
 
 @frappe.whitelist()
 def get_payment_methods():

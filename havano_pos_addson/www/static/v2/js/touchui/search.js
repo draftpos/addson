@@ -247,3 +247,20 @@ function selectItem(item, row, searchTerm) {
         }
     });
 }
+
+function loggedin(){
+             frappe.call({
+                method: "havano_pos_addson.havano_pos_addson.doctype.havano_pos_entry.havano_pos_entry.user_permitted",
+                args: {},
+                async: true,
+                callback: function(r) {
+                    if (r.message === "200") {
+                       console.log(r.message);
+                    }
+                    else{
+                        window.location.href = "/login";
+
+                    }
+                }
+            });}
+document.addEventListener("DOMContentLoaded", loggedin);
