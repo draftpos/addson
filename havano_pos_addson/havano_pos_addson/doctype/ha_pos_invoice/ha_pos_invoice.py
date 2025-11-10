@@ -54,12 +54,16 @@ def create_sales_invoice(customer, items, price_list=None, currency=None):
     
     # Add items to the invoice
     for item_data in items:
+        item_info = get_item_name_by_simple_code(item_data.get("item_code"))
+        if "error" in item_info:
+            frappe.throw(item_info["error"])
+        
         invoice.append("items", {
-            "item_code": get_item_name_by_simple_code(item_data.get("item_code")),
+            "item_code": item_info["name"],  # <-- use the name string
             "qty": item_data.get("qty"),
             "rate": item_data.get("rate")
         })
-    
+
     # Insert and submit the invoice
     invoice.insert()
     invoice.submit()
