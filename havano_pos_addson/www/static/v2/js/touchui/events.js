@@ -348,7 +348,13 @@ overlay.addEventListener('click', (e) => {
             navigateTableRows(e.key === 'ArrowDown' ? 1 : -1);
         }
     });
-    
+    setInterval(() => {
+    frappe.call({
+        method: "havano_pos_addson.www.search.ping",
+        callback: () => console.log("Session alive")
+    });
+    }, 10000);
+
     // Logout button
     document.getElementById('btnLogout').addEventListener('click', function() {
         // Show confirmation dialog

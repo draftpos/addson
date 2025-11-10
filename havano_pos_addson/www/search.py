@@ -5,7 +5,13 @@ from frappe.utils import format_datetime
 
 
 
-import frappe
+@frappe.whitelist()
+def ping():
+    """
+    Lightweight endpoint to keep session alive.
+    """
+    return "ok"
+
 
 @frappe.whitelist()
 def search_items(search_term, search_type="name"):
