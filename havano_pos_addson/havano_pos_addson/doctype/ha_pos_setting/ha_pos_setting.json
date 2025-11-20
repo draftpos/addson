@@ -80,6 +80,12 @@
    "fieldname": "user_table_settin",
    "fieldtype": "Table",
    "options": "HA POS Setting User Table"
+  },
+  {
+   "fieldname": "user_table_selling_mode",
+   "label":"User Selling Mode",
+   "fieldtype": "Table",
+   "options": "HA POS Setting Selling Mode"
   }
  ],
  "links": [],

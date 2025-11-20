@@ -6,7 +6,7 @@ function loadInitialData() {
     // First load settings, then customers and price lists
     loadPosSettings(function(settings) {
         // Store settings for later use
-        allSettings = settings;
+        let allSettings = settings;
         console.log("loadPosSettings");
         console.log("actual settings below----");
         console.log(allSettings);
@@ -25,6 +25,7 @@ function loadInitialData() {
                     });
             });
         });
+
     });
 }
 
@@ -281,3 +282,8 @@ function setDefaultValues(data) {
         }
     }
 }
+
+
+
+
+

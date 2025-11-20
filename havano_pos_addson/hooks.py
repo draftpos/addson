@@ -24,6 +24,10 @@ app_license = "mits"
 # Includes in <head>
 # ------------------
 
+fixtures = [
+    {"doctype": "Custom Field", "filters": [["name", "=", "Item-simple_code"]]}
+]
+
 # include js, css files in header of desk.html
 # app_include_css = "/assets/havano_pos_addson/css/havano_pos_addson.css"
 # app_include_js = "/assets/havano_pos_addson/js/havano_pos_addson.js"

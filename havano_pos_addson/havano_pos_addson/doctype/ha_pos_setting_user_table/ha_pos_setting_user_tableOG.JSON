@@ -34,18 +34,21 @@
    "read_only": 1
   },
   {
+   "fetch_from": "user.company",
    "fieldname": "company",
    "fieldtype": "Link",
    "options":"Company",
    "label": "Company"
   },
   {
+   "fetch_from": "user.cost_center",
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "options": "Cost Center",
    "label": "Cost Center"
   },
   {
+   "fetch_from": "user.customer",
    "fieldname": "customer",
    "fieldtype": "Link",
    "options":"Customer",

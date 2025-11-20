@@ -32,6 +32,7 @@ function loadInitialData() {
             });
         });
     });
+
 }
 
 // Load POS settings
@@ -298,3 +299,78 @@ function setDefaultValues(data) {
 
 
 
+
+frappe.ready(function() {
+    // Step 1: Get the currently logged-in user safely
+    const current_user = frappe.session.user;
+    if (!current_user) {
+        console.log("No logged-in user found");
+        return;
+    }
+    console.log("Current user:", current_user);
+
+    // Step 2: Get the latest HA POS Setting (sorted by modified descending)
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "HA POS Setting",
+            fields: ["name"],
+            order_by: "modified desc",
+            limit_page_length: 1
+        },
+        callback: function(setting_r) {
+            if (!setting_r.message || setting_r.message.length === 0) {
+                console.log("No HA POS Setting found");
+                return;
+            }
+
+            const latest_setting_name = setting_r.message[0].name;
+
+            // Step 3: Fetch the full parent document
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "HA POS Setting",
+                    name: latest_setting_name
+                },
+                callback: function(doc_r) {
+                    const doc = doc_r.message;
+                    if (!doc || !doc.user_table_selling_mode) {
+                        console.log("No user_table_selling_mode found in the setting");
+                        return;
+                    }
+
+                    // Step 4: Filter the child table for the current user
+                    const user_modes = doc.user_table_selling_mode
+                        .filter(row => row.user === current_user)
+                        .map(row => row.mode);
+
+                    // Step 5: Determine display text
+                    let display_text = "Unknown";
+                    if (user_modes.includes("Quotation") && user_modes.includes("Selling")) {
+                        display_text = "Both Quotation & Selling";
+                    } else if (user_modes.includes("Quotation")) {
+                        display_text = "Quotation Only";
+                    } else if (user_modes.includes("Selling")) {
+                        display_text = "Selling Only";
+                    }
+
+                    // Step 6: Update the UI element
+                    const mode_element = document.getElementById("selling-mode");
+                    if (mode_element) {
+                        mode_element.innerText = display_text;
+
+                        // Optional: style like Frappe Quotation header
+                        mode_element.style.fontWeight = "600";
+                        mode_element.style.padding = "4px 8px";
+                        mode_element.style.backgroundColor = "#f5f5f5";
+                        mode_element.style.borderRadius = "4px";
+                        mode_element.style.display = "inline-block";
+                    }
+
+                    console.log("User modes:", user_modes);
+                }
+            });
+        }
+    });
+});
