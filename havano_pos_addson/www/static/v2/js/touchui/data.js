@@ -300,6 +300,9 @@ function setDefaultValues(data) {
 
 
 
+
+
+
 frappe.ready(function() {
     // Step 1: Get the currently logged-in user safely
     const current_user = frappe.session.user;
@@ -348,7 +351,7 @@ frappe.ready(function() {
                     // Step 5: Determine display text
                     let display_text = "Unknown";
                     if (user_modes.includes("Quotation") && user_modes.includes("Selling")) {
-                        display_text = "Both Quotation & Selling";
+                        display_text = "Both";
                     } else if (user_modes.includes("Quotation")) {
                         display_text = "Quotation Only";
                     } else if (user_modes.includes("Selling")) {
@@ -366,11 +369,208 @@ frappe.ready(function() {
                         mode_element.style.backgroundColor = "#f5f5f5";
                         mode_element.style.borderRadius = "4px";
                         mode_element.style.display = "inline-block";
+                        mode_element.style.cursor = "pointer";
                     }
 
                     console.log("User modes:", user_modes);
+                    
+                    // Add click event to show Frappe-style UI
+                    mode_element.addEventListener("click", () => {
+                        showSellingModeDialog(user_modes);
+                    });
                 }
             });
         }
     });
+
+    function showSellingModeDialog(user_modes) {
+        // Build available modes
+        const availableModes = [];
+        
+        if (user_modes.includes("Selling")) {
+            availableModes.push({
+                value: "Selling",
+                label: "Selling Mode",
+                description: "Process sales transactions and generate invoices",
+                icon: "fa fa-shopping-cart",
+                color: "#28a745"
+            });
+        }
+        
+        if (user_modes.includes("Quotation")) {
+            availableModes.push({
+                value: "Quotation", 
+                label: "Quotation Mode",
+                description: "Create and manage quotations for customers",
+                icon: "fa fa-file-text",
+                color: "#17a2b8"
+            });
+        }
+
+        if (availableModes.length === 0) {
+            frappe.msgprint(__('No selling modes available for your user.'));
+            return;
+        }
+
+        if (availableModes.length === 1) {
+            // If only one mode is available, auto-select it
+            handleModeSelection(availableModes[0].value);
+            return;
+        }
+
+        // Create dialog using frappe.msgprint with custom HTML
+        let dialog_html = `
+            <div class="mode-selection-dialog">
+                <div class="mode-selection-container">
+                    ${availableModes.map((mode, index) => `
+                        <div class="mode-card ${index === 0 ? 'active' : ''}" data-mode="${mode.value}">
+                            <div class="mode-icon" style="color: ${mode.color}">
+                                <i class="${mode.icon}"></i>
+                            </div>
+                            <div class="mode-content">
+                                <div class="mode-title">${mode.label}</div>
+                                <div class="mode-description">${mode.description}</div>
+                            </div>
+                            <div class="mode-check">
+                                <i class="fa fa-check text-primary"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="mode-dialog-actions">
+                    <button class="btn btn-primary btn-confirm">Confirm Selection</button>
+                    <button class="btn btn-secondary btn-cancel">Cancel</button>
+                </div>
+            </div>
+            <style>
+                .mode-selection-dialog {
+                    min-width: 400px;
+                    padding: 10px 0;
+                }
+                .mode-selection-container {
+                    margin-bottom: 20px;
+                }
+                .mode-card {
+                    display: flex;
+                    align-items: center;
+                    padding: 12px 15px;
+                    border: 1px solid #d1d8dd;
+                    border-radius: 6px;
+                    margin-bottom: 10px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    background: white;
+                }
+                .mode-card:hover {
+                    border-color: #8d98a5;
+                    background: #fafbfc;
+                }
+                .mode-card.active {
+                    border-color: #2490ef;
+                    background: #f0f7ff;
+                }
+                .mode-icon {
+                    font-size: 20px;
+                    margin-right: 15px;
+                    width: 40px;
+                    text-align: center;
+                }
+                .mode-content {
+                    flex: 1;
+                }
+                .mode-title {
+                    font-weight: 600;
+                    color: #36414c;
+                    margin-bottom: 2px;
+                }
+                .mode-description {
+                    font-size: 12px;
+                    color: #8d98a5;
+                }
+                .mode-check {
+                    display: none;
+                    color: #2490ef;
+                }
+                .mode-card.active .mode-check {
+                    display: block;
+                }
+                .mode-dialog-actions {
+                    display: flex;
+                    gap: 10px;
+                    justify-content: flex-end;
+                }
+            </style>
+        `;
+
+        // Create custom dialog
+        const dialog = new frappe.ui.Dialog({
+            title: __('Select Selling Mode'),
+            primary_action_label: __('Confirm'),
+            secondary_action_label: __('Cancel')
+        });
+
+        // Add custom HTML to dialog body
+        dialog.$body.append(dialog_html);
+
+        let selected_mode = availableModes[0].value;
+
+        // Add click handlers for mode cards
+        dialog.$body.find('.mode-card').on('click', function() {
+            const $this = $(this);
+            dialog.$body.find('.mode-card').removeClass('active');
+            $this.addClass('active');
+            selected_mode = $this.data('mode');
+        });
+
+        // Override primary action
+        dialog.set_primary_action(() => {
+            handleModeSelection(selected_mode);
+            dialog.hide();
+        });
+
+        dialog.show();
+    }
+
+    function handleModeSelection(selectedMode) {
+        console.log("Selected mode:", selectedMode);
+        
+        // Update the display text
+        const mode_element = document.getElementById("selling-mode");
+        if (mode_element) {
+            mode_element.innerText = selectedMode === "Quotation" ? "Quotation Mode" : "Selling Mode";
+        }
+
+        // Show success message
+        frappe.show_alert({
+            message: __(`Switched to ${selectedMode} mode`),
+            indicator: 'green'
+        });
+
+        // Here you can add additional logic based on the selected mode
+        if (selectedMode === "Quotation") {
+            enableQuotationMode();
+        } else {
+            enableSellingMode();
+        }
+    }
+
+    function enableQuotationMode() {
+        // Add your Quotation mode logic here
+        console.log("Quotation mode enabled");
+        
+        frappe.show_alert({
+            message: __('Quotation features are now active'),
+            indicator: 'blue'
+        });
+    }
+
+    function enableSellingMode() {
+        // Add your Selling mode logic here
+        console.log("Selling mode enabled");
+        
+        frappe.show_alert({
+            message: __('Selling features are now active'),
+            indicator: 'green'
+        });
+    }
 });
