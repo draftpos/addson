@@ -136,6 +136,9 @@ function validateCustomerPriceList(settings, callback) {
 
 // Load customers
 function loadCustomers(callback) {
+     if (clearCartBtn) {
+        clearCartBtn.click();
+    }
     customerSelect.innerHTML = '<option value="">Select Customer</option>';
     frappe.call({
         method: "frappe.client.get_list",
@@ -302,7 +305,7 @@ function setDefaultValues(data) {
 
 
 
-
+// quotation dialog start ghere -----------------------------------------------
 frappe.ready(function() {
     // Step 1: Get the currently logged-in user safely
     const current_user = frappe.session.user;
@@ -311,7 +314,7 @@ frappe.ready(function() {
         return;
     }
     console.log("Current user:", current_user);
-    var custom_modes="";
+
     // Step 2: Get the latest HA POS Setting (sorted by modified descending)
     frappe.call({
         method: "frappe.client.get_list",
@@ -352,16 +355,11 @@ frappe.ready(function() {
                     let display_text = "Unknown";
                     if (user_modes.includes("Quotation") && user_modes.includes("Selling")) {
                         display_text = "Both";
-                        
                     } else if (user_modes.includes("Quotation")) {
-                        display_text = "Quotation Only";
-                        document.getElementById("payment_bttn").innerText = "Quotation";
-                        
+                        display_text = "Quotation";
                     } else if (user_modes.includes("Selling")) {
-                        display_text = "Selling Only";
-                        
+                        display_text = "Selling";
                     }
-
 
                     // Step 6: Update the UI element
                     const mode_element = document.getElementById("selling-mode");
@@ -379,12 +377,9 @@ frappe.ready(function() {
                     }
 
                     console.log("User modes:", user_modes);
-                    custom_modes=
-                    
-                    // Add click event to show Frappe-style UI
-                    mode_element.addEventListener("click", () => {
-                        showSellingModeDialog(user_modes);
-                    });
+                    let havano_pos_select_quotation = document.getElementById("havano-pos-select-quotation");
+                    havano_pos_select_quotation.addEventListener("click", () => {showWiseCoQuotations()});
+                
                 }
             });
         }
@@ -400,52 +395,57 @@ frappe.ready(function() {
 
 // THESE FUNCTIONS SHOW QUOTATIONS DIALOGS --------------------------------------
 function showWiseCoQuotations() {
+    // Fetch all quotations for wiseCo company
     let default_company = document.getElementById("default_company").value;
-    console.log("Default company:", default_company);
-
-    // STEP 1: Get quotation names already used in Sales Invoice
+    console.log("default company----------------");
+    console.log(default_company);
     frappe.call({
         method: "frappe.client.get_list",
         args: {
-            doctype: "Sales Invoice Item",
-            fields: ["reference_name"],
-            filters: {
-                reference_doctype: "Quotation"
-            },
-            limit_page_length: 9999
+            doctype: "Quotation",
+            filters: [
+                ["company", "=", default_company]
+            ],
+            fields: ["name", "customer_name", "transaction_date", "grand_total", "status"],
+            order_by: "creation desc"
         },
-        callback: function(used_r) {
-            let used_qtn = used_r.message
-                .filter(r => r.reference_name) // remove empty
-                .map(r => r.reference_name);
-
-            console.log("Used quotations:", used_qtn);
-
-            // STEP 2: Get quotations NOT in that used list
-            frappe.call({
-                method: "frappe.client.get_list",
-                args: {
-                    doctype: "Quotation",
-                    filters: [
-                        ["company", "=", default_company],
-                        ["name", "not in", used_qtn]
-                    ],
-                    fields: ["name", "customer_name", "transaction_date", "grand_total", "status"],
-                    order_by: "creation desc",
-                    limit_page_length: 9999
-                },
-                callback: function(qtn_r) {
-                    console.log("Available quotations:", qtn_r.message);
-
-                    if (qtn_r.message) {
-                        showQuotationDialog(qtn_r.message, default_company);
-                    }
-                }
-            });
+        callback: function(response) {
+            if (response.message) {
+                // First get the quotation list, then fetch items for each quotation
+                fetchQuotationsWithItems(response.message, default_company);
+            }
         }
     });
 }
 
+function fetchQuotationsWithItems(quotations, default_company) {
+    // Fetch items for each quotation
+    const quotationPromises = quotations.map(quotation => {
+        return new Promise((resolve) => {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Quotation",
+                    name: quotation.name
+                },
+                callback: function(response) {
+                    if (response.message) {
+                        quotation.items = response.message.items || [];
+                        resolve(quotation);
+                    } else {
+                        quotation.items = [];
+                        resolve(quotation);
+                    }
+                }
+            });
+        });
+    });
+
+    // Wait for all items to be fetched
+    Promise.all(quotationPromises).then(quotationsWithItems => {
+        showQuotationDialog(quotationsWithItems, default_company);
+    });
+}
 
 function showQuotationDialog(quotations, default_company) {
     if (!quotations || quotations.length === 0) {
@@ -456,31 +456,33 @@ function showQuotationDialog(quotations, default_company) {
     // Create the dialog
     const dialog = new frappe.ui.Dialog({
         title: __(`Quotations for ${default_company}`),
-        // primary_action_label: __('Select Quotation'),
-        // secondary_action_label: __('Cancel')
     });
 
     // Build HTML content with close button
     const htmlContent = `
-        <div class="quotation-dialog-content">
-            <div class="quotation-list-container" style="max-height: 400px; overflow-y: auto; margin: 15px 0;">
-                <div class="quotation-list">
+        <div class="quote-dialog-content">
+            <div class="quote-list-container" style="max-height: 400px; overflow-y: auto; margin: 15px 0;">
+                <div class="quote-list">
                     ${quotations.map(quotation => `
-                        <div class="quotation-item" data-quotation-name="${quotation.name}" 
+                        <div class="quote-item" data-quotation-name="${quotation.name}" 
                              data-customer="${quotation.customer_name || 'N/A'}"
                              data-date="${quotation.transaction_date || 'N/A'}"
                              data-amount="${quotation.grand_total || 0}"
                              data-status="${quotation.status}">
-                            <div class="quotation-header">
-                                <strong class="quotation-name">${quotation.name}</strong>
-                                <span class="quotation-status ${getStatusClass(quotation.status)}">
+                            <div class="quote-header">
+                                <strong class="quote-name">${quotation.name}</strong>
+                                <span class="quote-status ${getStatusClass(quotation.status)}">
                                     ${quotation.status}
                                 </span>
                             </div>
-                            <div class="quotation-details">
+                            <div class="quote-details">
                                 <div>Customer: ${quotation.customer_name || 'N/A'}</div>
                                 <div>Date: ${quotation.transaction_date || 'N/A'}</div>
                                 <div>Amount: ${format_currency(quotation.grand_total || 0)}</div>
+                            </div>
+                            <div class="quote-items" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                                <div class="quote-items-header" style="font-weight: bold; margin-bottom: 5px; color: #36414c;">Items:</div>
+                                <div class="quote-items-list"></div>
                             </div>
                         </div>
                     `).join('')}
@@ -488,10 +490,10 @@ function showQuotationDialog(quotations, default_company) {
             </div>
         </div>
         <style>
-            .quotation-dialog-content {
+            .quote-dialog-content {
                 position: relative;
             }
-            .quotation-item {
+            .quote-item {
                 padding: 12px;
                 border: 1px solid #d1d8dd;
                 border-radius: 4px;
@@ -500,32 +502,32 @@ function showQuotationDialog(quotations, default_company) {
                 transition: all 0.2s ease;
                 background: white;
             }
-            .quotation-item:hover {
+            .quote-item:hover {
                 background-color: #fafbfc;
                 border-color: #8d98a5;
             }
-            .quotation-item.selected {
+            .quote-item.selected {
                 background-color: #f0f7ff;
                 border-color: #2490ef;
             }
-            .quotation-header {
+            .quote-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 8px;
             }
-            .quotation-name {
+            .quote-name {
                 color: #36414c;
                 font-size: 13px;
             }
-            .quotation-details {
+            .quote-details {
                 font-size: 12px;
                 color: #8d98a5;
             }
-            .quotation-details div {
+            .quote-details div {
                 margin-bottom: 2px;
             }
-            .quotation-status {
+            .quote-status {
                 padding: 2px 8px;
                 border-radius: 10px;
                 font-size: 10px;
@@ -546,6 +548,31 @@ function showQuotationDialog(quotations, default_company) {
             .status-Lost, .status-Cancelled {
                 background-color: #f8f9fa;
                 color: #6c757d;
+            }
+            .quote-item-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 4px 0;
+                border-bottom: 1px solid #f0f0f0;
+                font-size: 11px;
+            }
+            .quote-item-row:last-child {
+                border-bottom: none;
+            }
+            .quote-item-name {
+                flex: 2;
+                color: #36414c;
+                text-align: left;
+            }
+            .quote-item-qty, .quote-item-rate, .quote-item-amount {
+                flex: 1;
+                text-align: right;
+                color: #8d98a5;
+                padding-left: 5px;
+            }
+            .quote-items-list {
+                max-height: 200px;
+                overflow-y: auto;
             }
             /* Close button styles */
             .modal-close-button {
@@ -590,25 +617,61 @@ function showQuotationDialog(quotations, default_company) {
     });
 
     // Add click handlers for quotation items
-    dialog.$body.find('.quotation-item').on('click', function() {
+    dialog.$body.find('.quote-item').on('click', function() {
         const $this = $(this);
+        const quotationName = $this.data('quotation-name');
         
-        // Remove selected class from all items
-        dialog.$body.find('.quotation-item').removeClass('selected');
+        // Find the full quotation data
+        const quotationData = quotations.find(q => q.name === quotationName);
+        
+        if (!quotationData) return;
+        
+        // Remove selected class and hide items from all items
+        dialog.$body.find('.quote-item').removeClass('selected');
+        dialog.$body.find('.quote-items').hide();
         
         // Add selected class to clicked item
         $this.addClass('selected');
         
+        // Show items for selected quotation
+        const itemsContainer = $this.find('.quote-items');
+        const itemsList = $this.find('.quote-items-list');
+        
+        // Clear previous items
+        itemsList.empty();
+        
+        // Populate items
+        if (quotationData.items && quotationData.items.length > 0) {
+            quotationData.items.forEach(item => {
+                const itemRow = $(`
+                    <div class="quote-item-row">
+                        <div class="quote-item-name">${item.item_name || item.item_code || 'N/A'}</div>
+                        <div class="quote-item-qty">${item.qty || 0}</div>
+                        <div class="quote-item-rate">${format_currency(item.rate || 0)}</div>
+                        <div class="quote-item-amount">${format_currency(item.amount || 0)}</div>
+                    </div>
+                `);
+                itemsList.append(itemRow);
+            });
+        } else {
+            itemsList.html('<div class="quote-item-row" style="text-align: center; color: #8d98a5;">No items found</div>');
+        }
+        
+        itemsContainer.show();
+        
         // Store selected quotation data
         selectedQuotation = {
-            name: $this.data('quotation-name'),
-            customer: $this.data('customer'),
-            date: $this.data('date'),
-            amount: $this.data('amount'),
-            status: $this.data('status')
+            name: quotationData.name,
+            customer: quotationData.customer_name,
+            date: quotationData.transaction_date,
+            amount: quotationData.grand_total,
+            status: quotationData.status,
+            items: quotationData.items,
         };
         
         console.log("Currently selected:", selectedQuotation);
+        console.log("Itemsss:", quotationData.items);
+        populateItemsFromList(quotationData.items);
     });
 
     // Override primary action
@@ -621,7 +684,10 @@ function showQuotationDialog(quotations, default_company) {
             });
             dialog.hide();
         } else {
-    
+            frappe.show_alert({
+                message: __('Please select a quotation first'),
+                indicator: 'red'
+            });
         }
     });
 
@@ -636,60 +702,93 @@ function showQuotationDialog(quotations, default_company) {
     dialog.show();
 }
 
-    function handleModeSelection(selectedMode) {
-        console.log("Selected mode:", selectedMode);
-        
-        // Update the display text
-        const mode_element = document.getElementById("selling-mode");
-        if (mode_element) {
-            mode_element.innerText = selectedMode === "Quotation" ? "Quotation Mode" : "Selling Mode";
-            
+function getStatusClass(status) {
+    return 'status-' + (status || 'Open');
+}
+// Populate multiple items from a list (e.g., quotation items)
+function populateItemsFromList(itemsList) {
+    if (!itemsList || itemsList.length === 0) return;
+
+    let currentRow = itemsTableBody.querySelector('tr'); // first row
+
+    itemsList.forEach((item, index) => {
+        // If no row exists, add one
+        if (!currentRow) {
+            addNewRow();
+            currentRow = itemsTableBody.lastChild;
         }
 
-        // Show success message
-        frappe.show_alert({
-            message: __(`Switched to ${selectedMode} mode`),
-            indicator: 'green'
-        });
+        // We reuse your selectItem logic but slightly adapted
+        populateRowWithItem(item, currentRow);
 
-        // Here you can add additional logic based on the selected mode
-        if (selectedMode === "Quotation") {
-            enableQuotationMode();
-        } else {
-            enableSellingMode();
+        // Move to next row for next item
+        currentRow = currentRow.nextElementSibling;
+    });
+
+    // Update totals after all items
+    updateTotals();
+}
+// Populate multiple items from a list (e.g., quotation items)
+function populateItemsFromList(itemsList) {
+    if (!itemsList || itemsList.length === 0) return;
+
+    let currentRow = itemsTableBody.querySelector('tr'); // first row
+
+    itemsList.forEach((item, index) => {
+        // If no row exists, add one
+        if (!currentRow) {
+            addNewRow();
+            currentRow = itemsTableBody.lastChild;
         }
+
+        // We reuse your selectItem logic but slightly adapted
+        populateRowWithItem(item, currentRow);
+
+        // Move to next row for next item
+        currentRow = currentRow.nextElementSibling;
+    });
+
+    // Update totals after all items
+    updateTotals();
+}
+
+// Adapted selectItem logic for direct row population (no search)
+function populateRowWithItem(item, row) {
+    if (!item.item_code && !item.simple_code) {
+        frappe.msgprint(`Item "${item.item_name || item.name}" doesn't have a simple code. Please contact admin.`);
+        return;
     }
 
-    function enableQuotationMode() {
-        // Add your Quotation mode logic here
-        console.log("Quotation mode enabled");
-        
-        frappe.show_alert({
-            message: __('Quotation features are now active'),
-            indicator: 'blue'
-        });
-    }
+    let simple_code = item.simple_code || item.item_code;
 
-    function enableSellingMode() {
-        // Add your Selling mode logic here
-        console.log("Selling mode enabled");
-        
-        frappe.show_alert({
-            message: __('Selling features are now active'),
-            indicator: 'green'
-        });
-    }
+    frappe.call({
+        method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+        args: {
+            simple_code: simple_code,
+            price_list: "Standard Selling"
+        },
+        callback: function(r) {
+            let real_price = (r.message && !r.message.error) ? r.message.price : 0;
+            const itemRate = real_price || 0;
 
-    function changePaymentsButton(){
-          var mode_element = document.getElementById("selling-mode");
-          console.log("------------------mode"+mode_element.innerText);
-          if (mode_element.innerText === "Quotation Only") {
-              document.getElementById("payment_bttn").innerText = "Receive Payment";
-          }
-          else{
-            console.log("ssssssssssssssssssss");
-          
-          }
-    }
-    changePaymentsButton();
-});
+            // Populate the row
+            row.querySelector('.item-code').value = "45678";
+            row.querySelector('.item-name').value = item.item_name || item.name;
+            row.querySelector('.item-rate').value = item.rate
+            row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+            row.querySelector('.item-qty').value = item.qty || 1;
+
+            updateItemAmount(row.querySelector('.item-qty'));
+            lastAddedRoww = row;
+
+            // Add a new row if needed
+            if (!row.nextElementSibling) {
+                addNewRow();
+            }
+        },
+        error: function(err) {
+            console.error("Failed to fetch price for", simple_code, err);
+        }
+    });
+}
