@@ -311,7 +311,7 @@ frappe.ready(function() {
         return;
     }
     console.log("Current user:", current_user);
-
+    var custom_modes="";
     // Step 2: Get the latest HA POS Setting (sorted by modified descending)
     frappe.call({
         method: "frappe.client.get_list",
@@ -352,11 +352,16 @@ frappe.ready(function() {
                     let display_text = "Unknown";
                     if (user_modes.includes("Quotation") && user_modes.includes("Selling")) {
                         display_text = "Both";
+                        
                     } else if (user_modes.includes("Quotation")) {
                         display_text = "Quotation Only";
+                        document.getElementById("payment_bttn").innerText = "Quotation";
+                        
                     } else if (user_modes.includes("Selling")) {
                         display_text = "Selling Only";
+                        
                     }
+
 
                     // Step 6: Update the UI element
                     const mode_element = document.getElementById("selling-mode");
@@ -373,6 +378,7 @@ frappe.ready(function() {
                     }
 
                     console.log("User modes:", user_modes);
+                    custom_modes=
                     
                     // Add click event to show Frappe-style UI
                     mode_element.addEventListener("click", () => {
@@ -538,6 +544,7 @@ frappe.ready(function() {
         const mode_element = document.getElementById("selling-mode");
         if (mode_element) {
             mode_element.innerText = selectedMode === "Quotation" ? "Quotation Mode" : "Selling Mode";
+            
         }
 
         // Show success message
@@ -573,4 +580,17 @@ frappe.ready(function() {
             indicator: 'green'
         });
     }
+
+    function changePaymentsButton(){
+          var mode_element = document.getElementById("selling-mode");
+          console.log("------------------mode"+mode_element.innerText);
+          if (mode_element.innerText === "Quotation Only") {
+              document.getElementById("payment_bttn").innerText = "Receive Payment";
+          }
+          else{
+            console.log("ssssssssssssssssssss");
+          
+          }
+    }
+    changePaymentsButton();
 });

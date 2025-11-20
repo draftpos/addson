@@ -207,3 +207,64 @@ def get_item_price_by_simple_code(simple_code, price_list="Standard Selling"):
         "uom": item.stock_uom or "Nos",
         "price": price
     }
+
+
+@frappe.whitelist()
+def create_quotation(customer, items, company=None):
+    """
+    Creates a Quotation from POS item rows
+    items = [{item_code, qty, rate, amount}]
+    """
+
+    try:
+        items = frappe.parse_json(items)
+
+        if not company:
+            company = frappe.db.get_single_value("Global Defaults", "default_company")
+
+        quotation = frappe.new_doc("Quotation")
+        quotation.quotation_to = "Customer"
+        quotation.party_name = customer
+        quotation.company = company
+
+        for it in items:
+            quotation.append("items", {
+                "item_code": get_item_id(it.get("item_code")),
+                "qty": it.get("qty"),
+                "rate": it.get("rate"),
+            })
+
+        quotation.save(ignore_permissions=True)
+
+        return {
+            "status": "success",
+            "quotation_name": quotation.name
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "POS Create Quotation Error")
+        return {
+            "status": "failed",
+            "error": str(e)
+        }
+
+
+@frappe.whitelist()
+def get_item_id(simple_code):
+    """
+    Returns the item 'name' (ID) for a given simple code.
+    """
+    if not simple_code:
+        return {"error": "No simple code provided"}
+
+    item = frappe.get_all(
+        "Item",
+        filters={"simple_code": simple_code},
+        fields=["name"],
+        limit=1
+    )
+
+    if item:
+        return item[0].get("name")
+    else:
+        return {"error": f"No item found for simple code {simple_code}"}

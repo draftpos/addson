@@ -234,16 +234,131 @@ function clearRow(row) {
     // Update totals
     updateTotals();
 }
-
+var custom_mode="";
 function showPaymentDialog(){
-    const subTotalEl = document.getElementById('sub_total').value;
-    if (subTotalEl == 0) {
-        showHaPopupCustom('Select at least one Item')
-        return
-    }
-    openPaymentPopup();
-  
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "HA POS Setting",
+            fields: ["name"],
+            order_by: "modified desc",
+            limit_page_length: 1
+        },
+        callback: function(setting_r) {
+            if (!setting_r.message || setting_r.message.length === 0) {
+                console.log("No HA POS Setting found");
+                return;
+            }
+
+            const latest_setting_name = setting_r.message[0].name;
+
+            // Step 3: Fetch the full parent document
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "HA POS Setting",
+                    name: latest_setting_name
+                },
+                callback: function(doc_r) {
+                    const doc = doc_r.message;
+                    if (!doc || !doc.user_table_selling_mode) {
+                        return;
+                    }
+
+                    // Step 4: Filter the child table for the current user
+                    const user_modes = doc.user_table_selling_mode
+                        .filter(row => row.user === "testcom9@gmail.com")
+                        .map(row => row.mode);
+
+                 
+                    if (user_modes.includes("Quotation") && user_modes.includes("Selling")) {
+                        custom_mode = "Both";   
+                    } else if (user_modes.includes("Quotation")) {
+                        custom_mode = "Quotation Only";
+                        document.getElementById("payment_bttn").innerText = "Quotation";
+                        submitQuotation();
+                        clearCart();           
+
+                        
+                    } else if (user_modes.includes("Selling")) {
+                        custom_mode = "Selling Only";
+                        const subTotalEl = document.getElementById('sub_total').value;
+                        if (subTotalEl == 0) {
+                            showHaPopupCustom('Select at least one Item')
+                            return
+                        }
+                        openPaymentPopup();
+                        
+                    }
+                }
+            });
+        }
+    });}
+
+function clearCart() {
+    const rows = Array.from(itemsTableBody.querySelectorAll('tr'));
+
+    rows.forEach((row, index) => {
+        // Keep the last row empty
+        if (index === rows.length - 1) {
+            row.querySelectorAll('input').forEach(input => input.value = '');
+        } else {
+            itemsTableBody.removeChild(row);
+        }
+    });
+
+    lastAddedRoww = null; // reset tracker if you have one
+    updateTotals();        // reset totals display
 }
+function submitQuotation() {
+    let items = printItemsInTable();  
+    frappe.call({
+        method: "havano_pos_addson.www.search.create_quotation",
+        args: {
+            customer: "Walking",
+            company: "Boring",
+            items: items
+        },
+        callback: function(r) {
+            if (r.message.status === "success") {
+                frappe.msgprint("Quotation Created: " + r.message.quotation_name);
+            } else {
+                frappe.msgprint("Error: " + r.message.error);
+            }
+        }
+    });
+}
+
+function printItemsInTable() {
+    const rows = itemsTableBody.querySelectorAll("tr");
+    let itemsList = [];
+
+    rows.forEach((row, index) => {
+        const itemCode = row.querySelector('.item-code')?.value || "";
+        const itemName = row.querySelector('.item-name')?.value || "";
+        const itemUOM = row.querySelector('.item-uom')?.value || "";
+        const itemRate = row.querySelector('.item-rate')?.value || 0;
+        const itemQty = row.querySelector('.item-qty')?.value || 0;
+        const itemAmount = row.querySelector('.item-amount')?.value || 0;
+
+        if (itemCode.trim() !== "") {
+            itemsList.push({
+                index: index + 1,
+                item_code: itemCode,
+                item_name: itemName,
+                uom: itemUOM,
+                rate: parseFloat(itemRate),
+                qty: parseFloat(itemQty),
+                amount: parseFloat(itemAmount)
+            });
+        }
+    });
+
+    // console.table(itemsList);
+
+    return itemsList;
+}
+
 
 // Adjust main styles
 function adjustMainStyles() {

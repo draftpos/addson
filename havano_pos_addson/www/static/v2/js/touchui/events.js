@@ -214,6 +214,7 @@ overlay.addEventListener('click', (e) => {
     
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
+
         // Skip if quantity popup is active (handled separately)
         if (quantityPopup.classList.contains('active')) return;
         
@@ -430,4 +431,6 @@ overlay.addEventListener('click', (e) => {
     } else {
         setupScrollIndicators();
     }
+
+    
 }
