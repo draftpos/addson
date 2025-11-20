@@ -311,7 +311,7 @@ frappe.ready(function() {
         return;
     }
     console.log("Current user:", current_user);
-
+    var custom_modes="";
     // Step 2: Get the latest HA POS Setting (sorted by modified descending)
     frappe.call({
         method: "frappe.client.get_list",
@@ -352,11 +352,16 @@ frappe.ready(function() {
                     let display_text = "Unknown";
                     if (user_modes.includes("Quotation") && user_modes.includes("Selling")) {
                         display_text = "Both";
+                        
                     } else if (user_modes.includes("Quotation")) {
-                        display_text = "Quotation";
+                        display_text = "Quotation Only";
+                        document.getElementById("payment_bttn").innerText = "Quotation";
+                        
                     } else if (user_modes.includes("Selling")) {
-                        display_text = "Selling";
+                        display_text = "Selling Only";
+                        
                     }
+
 
                     // Step 6: Update the UI element
                     const mode_element = document.getElementById("selling-mode");
@@ -374,9 +379,12 @@ frappe.ready(function() {
                     }
 
                     console.log("User modes:", user_modes);
-                    let havano_pos_select_quotation = document.getElementById("havano-pos-select-quotation");
-                    havano_pos_select_quotation.addEventListener("click", () => {showWiseCoQuotations()});
-                
+                    custom_modes=
+                    
+                    // Add click event to show Frappe-style UI
+                    mode_element.addEventListener("click", () => {
+                        showSellingModeDialog(user_modes);
+                    });
                 }
             });
         }
@@ -628,8 +636,60 @@ function showQuotationDialog(quotations, default_company) {
     dialog.show();
 }
 
-function getStatusClass(status) {
-    return 'status-' + (status || 'Open');
-}
+    function handleModeSelection(selectedMode) {
+        console.log("Selected mode:", selectedMode);
+        
+        // Update the display text
+        const mode_element = document.getElementById("selling-mode");
+        if (mode_element) {
+            mode_element.innerText = selectedMode === "Quotation" ? "Quotation Mode" : "Selling Mode";
+            
+        }
 
-// ------------------------------------------------------------------------------
+        // Show success message
+        frappe.show_alert({
+            message: __(`Switched to ${selectedMode} mode`),
+            indicator: 'green'
+        });
+
+        // Here you can add additional logic based on the selected mode
+        if (selectedMode === "Quotation") {
+            enableQuotationMode();
+        } else {
+            enableSellingMode();
+        }
+    }
+
+    function enableQuotationMode() {
+        // Add your Quotation mode logic here
+        console.log("Quotation mode enabled");
+        
+        frappe.show_alert({
+            message: __('Quotation features are now active'),
+            indicator: 'blue'
+        });
+    }
+
+    function enableSellingMode() {
+        // Add your Selling mode logic here
+        console.log("Selling mode enabled");
+        
+        frappe.show_alert({
+            message: __('Selling features are now active'),
+            indicator: 'green'
+        });
+    }
+
+    function changePaymentsButton(){
+          var mode_element = document.getElementById("selling-mode");
+          console.log("------------------mode"+mode_element.innerText);
+          if (mode_element.innerText === "Quotation Only") {
+              document.getElementById("payment_bttn").innerText = "Receive Payment";
+          }
+          else{
+            console.log("ssssssssssssssssssss");
+          
+          }
+    }
+    changePaymentsButton();
+});
