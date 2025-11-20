@@ -392,27 +392,52 @@ frappe.ready(function() {
 
 // THESE FUNCTIONS SHOW QUOTATIONS DIALOGS --------------------------------------
 function showWiseCoQuotations() {
-    // Fetch all quotations for wiseCo company
     let default_company = document.getElementById("default_company").value;
-    console.log("default company----------------");
-    console.log(default_company);
+    console.log("Default company:", default_company);
+
+    // STEP 1: Get quotation names already used in Sales Invoice
     frappe.call({
         method: "frappe.client.get_list",
         args: {
-            doctype: "Quotation",
-            filters: [
-                ["company", "=", default_company]
-            ],
-            fields: ["name", "customer_name", "transaction_date", "grand_total", "status"],
-            order_by: "creation desc"
+            doctype: "Sales Invoice Item",
+            fields: ["reference_name"],
+            filters: {
+                reference_doctype: "Quotation"
+            },
+            limit_page_length: 9999
         },
-        callback: function(response) {
-            if (response.message) {
-                showQuotationDialog(response.message, default_company);
-            }
+        callback: function(used_r) {
+            let used_qtn = used_r.message
+                .filter(r => r.reference_name) // remove empty
+                .map(r => r.reference_name);
+
+            console.log("Used quotations:", used_qtn);
+
+            // STEP 2: Get quotations NOT in that used list
+            frappe.call({
+                method: "frappe.client.get_list",
+                args: {
+                    doctype: "Quotation",
+                    filters: [
+                        ["company", "=", default_company],
+                        ["name", "not in", used_qtn]
+                    ],
+                    fields: ["name", "customer_name", "transaction_date", "grand_total", "status"],
+                    order_by: "creation desc",
+                    limit_page_length: 9999
+                },
+                callback: function(qtn_r) {
+                    console.log("Available quotations:", qtn_r.message);
+
+                    if (qtn_r.message) {
+                        showQuotationDialog(qtn_r.message, default_company);
+                    }
+                }
+            });
         }
     });
 }
+
 
 function showQuotationDialog(quotations, default_company) {
     if (!quotations || quotations.length === 0) {
