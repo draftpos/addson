@@ -342,6 +342,21 @@ function saveSalesInvoice(shouldPrint = false) {
                                 });
                             }, 0);
                         }
+                        if (quotationSelected){
+                                console.log("creating invoice from:" +quotationSelected.name);
+                                frappe.call({
+                                method: "havano_pos_addson.www.search.mark_quotation_as_ordered",
+                                args: {
+                                    quotation_name: quotationSelected.name
+                                },
+                                callback: function(r) {
+                                    console.log("Updated:", r.message);
+                                    quotationSelected="";
+                                }
+                            });
+
+                        }
+               
 
                         // Reset form asynchronously (non-blocking)
                         setTimeout(() => {

@@ -408,7 +408,8 @@ function showWiseCoQuotations() {
         args: {
             doctype: "Quotation",
             filters: [
-                ["company", "=", default_company]
+                ["Quotation", "company", "=", default_company],
+                ["Quotation", "status", "=", "Open"]
             ],
             fields: ["name", "customer_name", "transaction_date", "grand_total", "status"],
             order_by: "creation desc"
@@ -450,7 +451,7 @@ function fetchQuotationsWithItems(quotations, default_company) {
         showQuotationDialog(quotationsWithItems, default_company);
     });
 }
-
+var quotationSelected="";
 function showQuotationDialog(quotations, default_company) {
     if (!quotations || quotations.length === 0) {
         frappe.msgprint(__(`No quotations found for ${default_company}`));
@@ -674,6 +675,7 @@ function showQuotationDialog(quotations, default_company) {
         };
         
         console.log("Currently selected:", selectedQuotation);
+        quotationSelected=selectedQuotation;
         console.log("Itemsss:", quotationData.items);
         populateItemsFromList(quotationData.items);
     });
@@ -762,6 +764,7 @@ function populateRowWithItem(item, row) {
         frappe.msgprint(`Item "${item.item_name || item.name}" doesn't have a simple code. Please contact admin.`);
         return;
     }
+    console.log("simple code is here:" + item.simple_code);
 
     let simple_code = item.simple_code || item.item_code;
 
@@ -777,7 +780,7 @@ function populateRowWithItem(item, row) {
             const itemRate = real_price || 0;
 
             // Populate the row
-            row.querySelector('.item-code').value = "45678";
+            row.querySelector('.item-code').value = item.simple_code;
             row.querySelector('.item-name').value = item.item_name || item.name;
             row.querySelector('.item-rate').value = item.rate
             row.querySelector('.item-uom').value = item.stock_uom || 'Nos';

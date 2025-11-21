@@ -177,7 +177,6 @@ def get_invoice_json(invoice_name):
             frappe.throw("Error generating invoice JSON: {0}".format(str(e)))
 
 
-import frappe
 
 @frappe.whitelist()
 def get_item_price_by_simple_code(simple_code, price_list="Standard Selling"):
@@ -207,8 +206,6 @@ def get_item_price_by_simple_code(simple_code, price_list="Standard Selling"):
         "uom": item.stock_uom or "Nos",
         "price": price
     }
-
-
 @frappe.whitelist()
 def create_quotation(customer, items, company=None):
     """
@@ -230,11 +227,13 @@ def create_quotation(customer, items, company=None):
         for it in items:
             quotation.append("items", {
                 "item_code": get_item_id(it.get("item_code")),
+                "simple_code": it.get("item_code"),
                 "qty": it.get("qty"),
                 "rate": it.get("rate"),
             })
 
         quotation.save(ignore_permissions=True)
+        quotation.submit()    # 🔥 THIS makes status = OPEN (submitted)
 
         return {
             "status": "success",
@@ -247,6 +246,19 @@ def create_quotation(customer, items, company=None):
             "status": "failed",
             "error": str(e)
         }
+
+@frappe.whitelist()
+def mark_quotation_as_ordered(quotation_name):
+    """
+    Just update Quotation status to 'Ordered'
+    """
+    if not quotation_name:
+        frappe.throw("Quotation name is required.")
+
+    frappe.db.set_value("Quotation", quotation_name, "status", "Ordered")
+    frappe.db.commit()
+
+    return "Quotation marked as Ordered"
 
 
 @frappe.whitelist()
