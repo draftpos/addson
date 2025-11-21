@@ -136,6 +136,9 @@ function validateCustomerPriceList(settings, callback) {
 
 // Load customers
 function loadCustomers(callback) {
+     if (clearCartBtn) {
+        clearCartBtn.click();
+    }
     customerSelect.innerHTML = '<option value="">Select Customer</option>';
     frappe.call({
         method: "frappe.client.get_list",
@@ -302,7 +305,7 @@ function setDefaultValues(data) {
 
 
 
-
+// quotation dialog start ghere -----------------------------------------------
 frappe.ready(function() {
     // Step 1: Get the currently logged-in user safely
     const current_user = frappe.session.user;
@@ -358,8 +361,7 @@ frappe.ready(function() {
                         document.getElementById("payment_bttn").innerText = "Quotation";
                         
                     } else if (user_modes.includes("Selling")) {
-                        display_text = "Selling Only";
-                        
+                        display_text = "Selling";
                     }
 
 
@@ -372,225 +374,425 @@ frappe.ready(function() {
                         mode_element.style.fontWeight = "600";
                         mode_element.style.padding = "4px 8px";
                         mode_element.style.backgroundColor = "#f5f5f5";
+                        mode_element.style.color = "gray";
                         mode_element.style.borderRadius = "4px";
                         mode_element.style.display = "inline-block";
                         mode_element.style.cursor = "pointer";
                     }
 
                     console.log("User modes:", user_modes);
-                    custom_modes=
-                    
-                    // Add click event to show Frappe-style UI
-                    mode_element.addEventListener("click", () => {
-                        showSellingModeDialog(user_modes);
-                    });
+                    let havano_pos_select_quotation = document.getElementById("havano-pos-select-quotation");
+                    havano_pos_select_quotation.addEventListener("click", () => {showWiseCoQuotations()});
+                
                 }
             });
         }
     });
 
-    function showSellingModeDialog(user_modes) {
-        // Build available modes
-        const availableModes = [];
-        
-        if (user_modes.includes("Selling")) {
-            availableModes.push({
-                value: "Selling",
-                label: "Selling Mode",
-                description: "Process sales transactions and generate invoices",
-                icon: "fa fa-shopping-cart",
-                color: "#28a745"
+
+});
+
+
+
+
+
+
+// THESE FUNCTIONS SHOW QUOTATIONS DIALOGS --------------------------------------
+function showWiseCoQuotations() {
+    // Fetch all quotations for wiseCo company
+    let default_company = document.getElementById("default_company").value;
+    console.log("default company----------------");
+    console.log(default_company);
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Quotation",
+            filters: [
+                ["company", "=", default_company]
+            ],
+            fields: ["name", "customer_name", "transaction_date", "grand_total", "status"],
+            order_by: "creation desc"
+        },
+        callback: function(response) {
+            if (response.message) {
+                // First get the quotation list, then fetch items for each quotation
+                fetchQuotationsWithItems(response.message, default_company);
+            }
+        }
+    });
+}
+
+function fetchQuotationsWithItems(quotations, default_company) {
+    // Fetch items for each quotation
+    const quotationPromises = quotations.map(quotation => {
+        return new Promise((resolve) => {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Quotation",
+                    name: quotation.name
+                },
+                callback: function(response) {
+                    if (response.message) {
+                        quotation.items = response.message.items || [];
+                        resolve(quotation);
+                    } else {
+                        quotation.items = [];
+                        resolve(quotation);
+                    }
+                }
             });
-        }
-        
-        if (user_modes.includes("Quotation")) {
-            availableModes.push({
-                value: "Quotation", 
-                label: "Quotation Mode",
-                description: "Create and manage quotations for customers",
-                icon: "fa fa-file-text",
-                color: "#17a2b8"
-            });
-        }
+        });
+    });
 
-        if (availableModes.length === 0) {
-            frappe.msgprint(__('No selling modes available for your user.'));
-            return;
-        }
+    // Wait for all items to be fetched
+    Promise.all(quotationPromises).then(quotationsWithItems => {
+        showQuotationDialog(quotationsWithItems, default_company);
+    });
+}
 
-        if (availableModes.length === 1) {
-            // If only one mode is available, auto-select it
-            handleModeSelection(availableModes[0].value);
-            return;
-        }
+function showQuotationDialog(quotations, default_company) {
+    if (!quotations || quotations.length === 0) {
+        frappe.msgprint(__(`No quotations found for ${default_company}`));
+        return;
+    }
 
-        // Create dialog using frappe.msgprint with custom HTML
-        let dialog_html = `
-            <div class="mode-selection-dialog">
-                <div class="mode-selection-container">
-                    ${availableModes.map((mode, index) => `
-                        <div class="mode-card ${index === 0 ? 'active' : ''}" data-mode="${mode.value}">
-                            <div class="mode-icon" style="color: ${mode.color}">
-                                <i class="${mode.icon}"></i>
+    // Create the dialog
+    const dialog = new frappe.ui.Dialog({
+        title: __(`Quotations for ${default_company}`),
+    });
+
+    // Build HTML content with close button
+    const htmlContent = `
+        <div class="quote-dialog-content">
+            <div class="quote-list-container" style="max-height: 400px; overflow-y: auto; margin: 15px 0;">
+                <div class="quote-list">
+                    ${quotations.map(quotation => `
+                        <div class="quote-item" data-quotation-name="${quotation.name}" 
+                             data-customer="${quotation.customer_name || 'N/A'}"
+                             data-date="${quotation.transaction_date || 'N/A'}"
+                             data-amount="${quotation.grand_total || 0}"
+                             data-status="${quotation.status}">
+                            <div class="quote-header">
+                                <strong class="quote-name">${quotation.name}</strong>
+                                <span class="quote-status ${getStatusClass(quotation.status)}">
+                                    ${quotation.status}
+                                </span>
                             </div>
-                            <div class="mode-content">
-                                <div class="mode-title">${mode.label}</div>
-                                <div class="mode-description">${mode.description}</div>
+                            <div class="quote-details">
+                                <div>Customer: ${quotation.customer_name || 'N/A'}</div>
+                                <div>Date: ${quotation.transaction_date || 'N/A'}</div>
+                                <div>Amount: ${format_currency(quotation.grand_total || 0)}</div>
                             </div>
-                            <div class="mode-check">
-                                <i class="fa fa-check text-primary"></i>
+                            <div class="quote-items" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                                <div class="quote-items-header" style="font-weight: bold; margin-bottom: 5px; color: #36414c;">Items:</div>
+                                <div class="quote-items-list"></div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <div class="mode-dialog-actions">
-                    <button class="btn btn-primary btn-confirm">Confirm Selection</button>
-                    <button class="btn btn-secondary btn-cancel">Cancel</button>
-                </div>
             </div>
-            <style>
-                .mode-selection-dialog {
-                    min-width: 400px;
-                    padding: 10px 0;
-                }
-                .mode-selection-container {
-                    margin-bottom: 20px;
-                }
-                .mode-card {
-                    display: flex;
-                    align-items: center;
-                    padding: 12px 15px;
-                    border: 1px solid #d1d8dd;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    background: white;
-                }
-                .mode-card:hover {
-                    border-color: #8d98a5;
-                    background: #fafbfc;
-                }
-                .mode-card.active {
-                    border-color: #2490ef;
-                    background: #f0f7ff;
-                }
-                .mode-icon {
-                    font-size: 20px;
-                    margin-right: 15px;
-                    width: 40px;
-                    text-align: center;
-                }
-                .mode-content {
-                    flex: 1;
-                }
-                .mode-title {
-                    font-weight: 600;
-                    color: #36414c;
-                    margin-bottom: 2px;
-                }
-                .mode-description {
-                    font-size: 12px;
-                    color: #8d98a5;
-                }
-                .mode-check {
-                    display: none;
-                    color: #2490ef;
-                }
-                .mode-card.active .mode-check {
-                    display: block;
-                }
-                .mode-dialog-actions {
-                    display: flex;
-                    gap: 10px;
-                    justify-content: flex-end;
-                }
-            </style>
-        `;
+        </div>
+        <style>
+            .quote-dialog-content {
+                position: relative;
+            }
+            .quote-item {
+                padding: 12px;
+                border: 1px solid #d1d8dd;
+                border-radius: 4px;
+                margin-bottom: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                background: white;
+            }
+            .quote-item:hover {
+                background-color: #fafbfc;
+                border-color: #8d98a5;
+            }
+            .quote-item.selected {
+                background-color: #f0f7ff;
+                border-color: #2490ef;
+            }
+            .quote-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            .quote-name {
+                color: #36414c;
+                font-size: 13px;
+            }
+            .quote-details {
+                font-size: 12px;
+                color: #8d98a5;
+            }
+            .quote-details div {
+                margin-bottom: 2px;
+            }
+            .quote-status {
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 10px;
+                font-weight: 600;
+            }
+            .status-Open {
+                background-color: #e8f4fd;
+                color: #007bff;
+            }
+            .status-Submitted {
+                background-color: #fff8dd;
+                color: #ffc107;
+            }
+            .status-Ordered {
+                background-color: #e7f7ed;
+                color: #28a745;
+            }
+            .status-Lost, .status-Cancelled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+            }
+            .quote-item-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 4px 0;
+                border-bottom: 1px solid #f0f0f0;
+                font-size: 11px;
+            }
+            .quote-item-row:last-child {
+                border-bottom: none;
+            }
+            .quote-item-name {
+                flex: 2;
+                color: #36414c;
+                text-align: left;
+            }
+            .quote-item-qty, .quote-item-rate, .quote-item-amount {
+                flex: 1;
+                text-align: right;
+                color: #8d98a5;
+                padding-left: 5px;
+            }
+            .quote-items-list {
+                max-height: 200px;
+                overflow-y: auto;
+            }
+            /* Close button styles */
+            .modal-close-button {
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: none;
+                border: none;
+                font-size: 20px;
+                color: #8d98a5;
+                cursor: pointer;
+                padding: 5px;
+                z-index: 1000;
+            }
+            .modal-close-button:hover {
+                color: #36414c;
+                background-color: #f5f7fa;
+                border-radius: 50%;
+            }
+        </style>
+    `;
 
-        // Create custom dialog
-        const dialog = new frappe.ui.Dialog({
-            title: __('Select Selling Mode'),
-            primary_action_label: __('Confirm'),
-            secondary_action_label: __('Cancel')
-        });
+    // Add HTML to dialog body
+    dialog.$body.append(htmlContent);
 
-        // Add custom HTML to dialog body
-        dialog.$body.append(dialog_html);
+    // Add close button to the dialog header
+    const closeButton = $(`
+        <button type="button" class="modal-close-button" aria-label="Close">
+            &times;
+        </button>
+    `);
+    
+    // Add close button to the modal
+    dialog.$wrapper.find('.modal-header').append(closeButton);
 
-        let selected_mode = availableModes[0].value;
+    let selectedQuotation = null;
 
-        // Add click handlers for mode cards
-        dialog.$body.find('.mode-card').on('click', function() {
-            const $this = $(this);
-            dialog.$body.find('.mode-card').removeClass('active');
-            $this.addClass('active');
-            selected_mode = $this.data('mode');
-        });
+    // Add click handler for close button
+    closeButton.on('click', function() {
+        console.log("Dialog closed by X button");
+        dialog.hide();
+    });
 
-        // Override primary action
-        dialog.set_primary_action(() => {
-            handleModeSelection(selected_mode);
-            dialog.hide();
-        });
-
-        dialog.show();
-    }
-
-    function handleModeSelection(selectedMode) {
-        console.log("Selected mode:", selectedMode);
+    // Add click handlers for quotation items
+    dialog.$body.find('.quote-item').on('click', function() {
+        const $this = $(this);
+        const quotationName = $this.data('quotation-name');
         
-        // Update the display text
-        const mode_element = document.getElementById("selling-mode");
-        if (mode_element) {
-            mode_element.innerText = selectedMode === "Quotation" ? "Quotation Mode" : "Selling Mode";
-            
-        }
-
-        // Show success message
-        frappe.show_alert({
-            message: __(`Switched to ${selectedMode} mode`),
-            indicator: 'green'
-        });
-
-        // Here you can add additional logic based on the selected mode
-        if (selectedMode === "Quotation") {
-            enableQuotationMode();
+        // Find the full quotation data
+        const quotationData = quotations.find(q => q.name === quotationName);
+        
+        if (!quotationData) return;
+        
+        // Remove selected class and hide items from all items
+        dialog.$body.find('.quote-item').removeClass('selected');
+        dialog.$body.find('.quote-items').hide();
+        
+        // Add selected class to clicked item
+        $this.addClass('selected');
+        
+        // Show items for selected quotation
+        const itemsContainer = $this.find('.quote-items');
+        const itemsList = $this.find('.quote-items-list');
+        
+        // Clear previous items
+        itemsList.empty();
+        
+        // Populate items
+        if (quotationData.items && quotationData.items.length > 0) {
+            quotationData.items.forEach(item => {
+                const itemRow = $(`
+                    <div class="quote-item-row">
+                        <div class="quote-item-name">${item.item_name || item.item_code || 'N/A'}</div>
+                        <div class="quote-item-qty">${item.qty || 0}</div>
+                        <div class="quote-item-rate">${format_currency(item.rate || 0)}</div>
+                        <div class="quote-item-amount">${format_currency(item.amount || 0)}</div>
+                    </div>
+                `);
+                itemsList.append(itemRow);
+            });
         } else {
-            enableSellingMode();
+            itemsList.html('<div class="quote-item-row" style="text-align: center; color: #8d98a5;">No items found</div>');
         }
-    }
-
-    function enableQuotationMode() {
-        // Add your Quotation mode logic here
-        console.log("Quotation mode enabled");
         
-        frappe.show_alert({
-            message: __('Quotation features are now active'),
-            indicator: 'blue'
-        });
-    }
-
-    function enableSellingMode() {
-        // Add your Selling mode logic here
-        console.log("Selling mode enabled");
+        itemsContainer.show();
         
-        frappe.show_alert({
-            message: __('Selling features are now active'),
-            indicator: 'green'
-        });
+        // Store selected quotation data
+        selectedQuotation = {
+            name: quotationData.name,
+            customer: quotationData.customer_name,
+            date: quotationData.transaction_date,
+            amount: quotationData.grand_total,
+            status: quotationData.status,
+            items: quotationData.items,
+        };
+        
+        console.log("Currently selected:", selectedQuotation);
+        console.log("Itemsss:", quotationData.items);
+        populateItemsFromList(quotationData.items);
+    });
+
+    // Override primary action
+    dialog.set_primary_action(() => {
+        if (selectedQuotation) {
+            console.log("Selected Quotation:", selectedQuotation);
+            frappe.show_alert({
+                message: __('Selected quotation: ') + selectedQuotation.name,
+                indicator: 'green'
+            });
+            dialog.hide();
+        } else {
+            frappe.show_alert({
+                message: __('Please select a quotation first'),
+                indicator: 'red'
+            });
+        }
+    });
+
+    // Also close when clicking outside the dialog (modal backdrop)
+    dialog.$wrapper.on('click', function(e) {
+        if (e.target === this) {
+            console.log("Dialog closed by clicking outside");
+            dialog.hide();
+        }
+    });
+
+    dialog.show();
+}
+
+function getStatusClass(status) {
+    return 'status-' + (status || 'Open');
+}
+// Populate multiple items from a list (e.g., quotation items)
+function populateItemsFromList(itemsList) {
+    if (!itemsList || itemsList.length === 0) return;
+
+    let currentRow = itemsTableBody.querySelector('tr'); // first row
+
+    itemsList.forEach((item, index) => {
+        // If no row exists, add one
+        if (!currentRow) {
+            addNewRow();
+            currentRow = itemsTableBody.lastChild;
+        }
+
+        // We reuse your selectItem logic but slightly adapted
+        populateRowWithItem(item, currentRow);
+
+        // Move to next row for next item
+        currentRow = currentRow.nextElementSibling;
+    });
+
+    // Update totals after all items
+    updateTotals();
+}
+// Populate multiple items from a list (e.g., quotation items)
+function populateItemsFromList(itemsList) {
+    if (!itemsList || itemsList.length === 0) return;
+
+    let currentRow = itemsTableBody.querySelector('tr'); // first row
+
+    itemsList.forEach((item, index) => {
+        // If no row exists, add one
+        if (!currentRow) {
+            addNewRow();
+            currentRow = itemsTableBody.lastChild;
+        }
+
+        // We reuse your selectItem logic but slightly adapted
+        populateRowWithItem(item, currentRow);
+
+        // Move to next row for next item
+        currentRow = currentRow.nextElementSibling;
+    });
+
+    // Update totals after all items
+    updateTotals();
+}
+
+// Adapted selectItem logic for direct row population (no search)
+function populateRowWithItem(item, row) {
+    if (!item.item_code && !item.simple_code) {
+        frappe.msgprint(`Item "${item.item_name || item.name}" doesn't have a simple code. Please contact admin.`);
+        return;
     }
 
-    function changePaymentsButton(){
-          var mode_element = document.getElementById("selling-mode");
-          console.log("------------------mode"+mode_element.innerText);
-          if (mode_element.innerText === "Quotation Only") {
-              document.getElementById("payment_bttn").innerText = "Receive Payment";
-          }
-          else{
-            console.log("ssssssssssssssssssss");
-          
-          }
-    }
-    changePaymentsButton();
-});
+    let simple_code = item.simple_code || item.item_code;
+
+    frappe.call({
+        method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+        args: {
+            simple_code: simple_code,
+            price_list: "Standard Selling"
+        },
+        callback: function(r) {
+            let real_price = (r.message && !r.message.error) ? r.message.price : 0;
+            const itemRate = real_price || 0;
+
+            // Populate the row
+            row.querySelector('.item-code').value = "45678";
+            row.querySelector('.item-name').value = item.item_name || item.name;
+            row.querySelector('.item-rate').value = item.rate
+            row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+            row.querySelector('.item-qty').value = item.qty || 1;
+
+            updateItemAmount(row.querySelector('.item-qty'));
+            lastAddedRoww = row;
+
+            // Add a new row if needed
+            if (!row.nextElementSibling) {
+                addNewRow();
+            }
+        },
+        error: function(err) {
+            console.error("Failed to fetch price for", simple_code, err);
+        }
+    });
+}
