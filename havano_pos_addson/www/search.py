@@ -280,3 +280,55 @@ def get_item_id(simple_code):
         return item[0].get("name")
     else:
         return {"error": f"No item found for simple code {simple_code}"}
+
+
+@frappe.whitelist()
+def search_quotations(search=""):
+    filters = {}
+
+    if search:
+        filters = {"name": ["like", f"%{search}%"]}
+
+    return frappe.get_all(
+        "Quotation",
+        filters=filters,
+        fields=["name"],
+        order_by="creation desc",
+        limit=10
+    )
+
+
+@frappe.whitelist()
+def get_quotation(name):
+    doc = frappe.get_doc("Quotation", name)
+    
+    # return quotation + items
+    return {
+        "name": doc.name,
+        "customer_name": doc.customer_name,
+        "transaction_date": doc.transaction_date,
+        "items": [
+            {
+                "item_code": item.item_code,
+                "item_name": item.item_name,
+                "qty": item.qty,
+                "rate": item.rate,
+                "amount": item.amount,
+                "simple_code": item.simple_code
+            }
+            for item in doc.items
+        ]
+    }
+@frappe.whitelist()
+def search_customers(search=""):
+    filters = {}
+    if search:
+        filters = {"customer_name": ["like", f"%{search}%"]}
+
+    return frappe.get_all(
+        "Customer",
+        filters=filters,
+        fields=["name", "customer_name", "customer_type", "customer_group"],
+        order_by="creation desc",
+        limit=10
+    )

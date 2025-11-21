@@ -1,5 +1,62 @@
 <link rel="stylesheet" href="../static/v1/css/havano-pos-header.css">
+<style>
+    #customer_results_box {
+    position: absolute;
+    background: white;
+    border: 1px solid #d1d1d1;
+    border-radius: 6px;
+    margin-top: 2px;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.12);
+    display: none;
+    z-index: 9999;
+}
 
+#customer_results_box .item,
+#customer_results_box .create_button {
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+#customer_results_box .item:hover,
+#customer_results_box .create_button:hover {
+    background: #f4f4f4;
+}
+
+#customer_results_box .create_button {
+    font-weight: bold;
+    color: blue;
+    border-top: 1px solid #ccc;
+}
+
+    
+    
+#results_box {
+    position: absolute;
+    background: white;
+    border: 1px solid #d1d1d1;
+    border-radius: 6px;
+    margin-top: 2px;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.12);
+    display: none;
+    z-index: 9999;
+}
+
+#results_box .item {
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+#results_box .item:hover {
+    background: #f4f4f4;
+}
+
+</style>
 <!-- Enhanced Header with Modern Design - Single Line -->
 <div class="ha-header-container">
     <div class="ha-header-single-row">
@@ -39,13 +96,18 @@
                 </div>
             </div>
 
-            <div class="ha-form-group-inline">
-                <div class="ha-input-wrapper">
-                    <div id="havano-pos-select-quotation" class="form-select ha-enhanced-select">
-                        <span>Select Quotation</span>
-                    </div>
-                </div>
+            <div style="position:relative; width:300px;">
+                <input id="customer_search" type="text" placeholder="Search Customer…">
+                <div id="customer_results_box"></div>
             </div>
+
+
+            
+            <div style="position:relative; width:250px;">
+                <input id="quotation_search" type="text" placeholder="Search Quotation…">
+                <div id="results_box"></div>
+            </div>
+
 
 <div class="ha-form-group-inline">
     <label for="default_company">

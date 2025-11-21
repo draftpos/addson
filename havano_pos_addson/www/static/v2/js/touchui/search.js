@@ -264,3 +264,253 @@ function loggedin(){
                 }
             });}
 document.addEventListener("DOMContentLoaded", loggedin);
+
+let timeout = null;
+
+const input = document.getElementById("quotation_search");
+const results = document.getElementById("results_box");
+
+input.addEventListener("input", () => {
+    clearTimeout(timeout);
+
+    const txt = input.value.trim();
+    if (!txt) {
+        results.style.display = "none";
+        return;
+    }
+
+    timeout = setTimeout(() => searchQuotation(txt), 300);
+});
+
+
+function searchQuotation(text) {
+    frappe.call({
+        method: "havano_pos_addson.www.search.search_quotations",
+        args: { search: text },
+        callback(r) {
+            const list = r.message || [];
+            if (!list.length) {
+                results.style.display = "none";
+                return;
+            }
+
+            results.innerHTML = "";
+            list.forEach(q => {
+                const item = document.createElement("div");
+                item.classList.add("item");
+                item.textContent = q.name;
+
+                // CLICK EVENT ON THE QUOTATION
+                item.addEventListener("click", () => {
+                    input.value = q.name;      // populate input
+                    results.style.display = "none";
+
+                
+
+                    // Example: call another function
+                    handleQuotationClick(q);
+                });
+
+                results.appendChild(item);
+            });
+
+            results.style.display = "block";
+        }
+    });
+}
+
+input.addEventListener("dblclick", () => {
+    searchQuotation(""); // empty string will return first 10
+});
+
+
+function handleQuotationClick(quotation) {
+    console.log("Quotation selected:", quotation.name);
+
+    frappe.call({
+        method: "havano_pos_addson.www.search.get_quotation",
+        args: { name: quotation.name },
+        callback(r) {
+            const q = r.message;
+
+            // Just log the full quotation object
+            console.log("Full quotation:", q);
+            console.log("Items:", q.items);
+            populateItemsFromList(q.items);
+        }
+    });
+}
+
+
+// Populate multiple items from a list (e.g., quotation items)
+function populateItemsFromList(itemsList) {
+    if (!itemsList || itemsList.length === 0) return;
+
+    let currentRow = itemsTableBody.querySelector('tr'); // first row
+
+    itemsList.forEach((item, index) => {
+        // If no row exists, add one
+        if (!currentRow) {
+            addNewRow();
+            currentRow = itemsTableBody.lastChild;
+        }
+
+        // We reuse your selectItem logic but slightly adapted
+        populateRowWithItem(item, currentRow);
+
+        // Move to next row for next item
+        currentRow = currentRow.nextElementSibling;
+    });
+
+    // Update totals after all items
+    updateTotals();
+}
+// Populate multiple items from a list (e.g., quotation items)
+function populateItemsFromList(itemsList) {
+    if (!itemsList || itemsList.length === 0) return;
+
+    let currentRow = itemsTableBody.querySelector('tr'); // first row
+
+    itemsList.forEach((item, index) => {
+        // If no row exists, add one
+        if (!currentRow) {
+            addNewRow();
+            currentRow = itemsTableBody.lastChild;
+        }
+
+        // We reuse your selectItem logic but slightly adapted
+        populateRowWithItem(item, currentRow);
+
+        // Move to next row for next item
+        currentRow = currentRow.nextElementSibling;
+    });
+
+    // Update totals after all items
+    updateTotals();
+}
+
+// Adapted selectItem logic for direct row population (no search)
+function populateRowWithItem(item, row) {
+    if (!item.item_code && !item.simple_code) {
+        frappe.msgprint(`Item "${item.item_name || item.name}" doesn't have a simple code. Please contact admin.`);
+        return;
+    }
+    console.log("simple code is here:" + item.simple_code);
+
+    let simple_code = item.simple_code || item.item_code;
+
+    frappe.call({
+        method: "havano_pos_addson.www.search.get_item_price_by_simple_code",
+        headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+        args: {
+            simple_code: simple_code,
+            price_list: "Standard Selling"
+        },
+        callback: function(r) {
+            let real_price = (r.message && !r.message.error) ? r.message.price : 0;
+            const itemRate = real_price || 0;
+
+            // Populate the row
+            row.querySelector('.item-code').value = item.simple_code;
+            row.querySelector('.item-name').value = item.item_name || item.name;
+            row.querySelector('.item-rate').value = item.rate
+            row.querySelector('.item-uom').value = item.stock_uom || 'Nos';
+            row.querySelector('.item-qty').value = item.qty || 1;
+
+            updateItemAmount(row.querySelector('.item-qty'));
+            lastAddedRoww = row;
+
+            // Add a new row if needed
+            if (!row.nextElementSibling) {
+                addNewRow();
+            }
+        },
+        error: function(err) {
+            console.error("Failed to fetch price for", simple_code, err);
+        }
+    });
+}
+let customerTimeout = null;
+const customerInput = document.getElementById("customer_search");
+const customerResults = document.getElementById("customer_results_box");
+
+// Search as typing
+customerInput.addEventListener("input", () => {
+    clearTimeout(customerTimeout);
+    const txt = customerInput.value.trim();
+    if (!txt) {
+        customerResults.style.display = "none";
+        return;
+    }
+    customerTimeout = setTimeout(() => searchCustomer(txt), 300);
+});
+
+// Double-click → show first 10 customers
+customerInput.addEventListener("dblclick", () => {
+    searchCustomer("");
+});
+
+function searchCustomer(text) {
+    frappe.call({
+        method: "havano_pos_addson.www.search.search_customers",
+        args: { search: text },
+        callback(r) {
+            const list = r.message || [];
+            customerResults.innerHTML = "";
+
+            if (!list.length) {
+                // If no customer found, show "Create Customer" button
+                const createBtn = document.createElement("div");
+                createBtn.textContent = "➕ Create Customer";
+                createBtn.classList.add("create_button");
+                createBtn.onclick = () => {
+                    console.log("Create customer clicked");
+                    // You can call your create customer function here
+                };
+                customerResults.appendChild(createBtn);
+                customerResults.style.display = "block";
+                return;
+            }
+
+            // Add customer items
+            list.forEach(c => {
+                const item = document.createElement("div");
+                item.classList.add("item");
+                item.textContent = c.customer_name;
+                item.onclick = () => {
+                    customerInput.value = c.customer_name;
+                    customerResults.style.display = "none";
+
+                    // Log full customer object
+                    console.log("Customer selected:", c);
+                };
+                customerResults.appendChild(item);
+            });
+
+            // Add "Create Customer" button at the bottom
+            const createBtn = document.createElement("div");
+            createBtn.textContent = "➕ Create Customer";
+            createBtn.classList.add("create_button");
+
+            createBtn.classList.add("create_button");
+            createBtn.onclick = () => {
+                console.log("Create customer clicked");
+            };
+            customerResults.appendChild(createBtn);
+
+            customerResults.style.display = "block";
+        }
+    });
+}
+
+// Optional: click outside to close
+document.addEventListener("click", e => {
+    if (!customerResults.contains(e.target) && e.target !== customerInput) {
+        customerResults.style.display = "none";
+    }
+});
+document.addEventListener("click", e => {
+    if (!results.contains(e.target) && e.target !== input) {
+        results.style.display = "none";
+    }
+});
