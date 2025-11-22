@@ -72,18 +72,37 @@
         
         <!-- Form Controls -->
         <div class="ha-header-center">
-            <div class="ha-form-group-inline">
-                <label for="customer">
-                    <i class="fas fa-user"></i>
-                    Customer
-                </label>
-                <div class="ha-input-wrapper">
-                    <select id="customer" class="form-select ha-enhanced-select">
-                        <option value="">Select Customer</option>
-                    </select>
-                    <i class="fas fa-chevron-down ha-select-icon"></i>
-                </div>
-            </div>
+          <div class="ha-form-group-inline">
+    <label for="customer">
+        <i class="fas fa-user"></i>
+        Customer
+    </label>
+<!-- Customer Select (Selling Mode) -->
+<div class="ha-input-wrapper" id="customerSelectWrapper">
+    <select id="customer" class="form-select ha-enhanced-select" hidden>
+        <option value="">Select Customer</option>
+    </select>
+    <i class="fas fa-chevron-down ha-select-icon"></i>
+
+    <!-- Customer Search Input & Results -->
+    <div style="position: relative; width: 300px; margin-top: 5px;">
+        <input id="customer_search" type="text" class="form-control" placeholder="Search Customer…">
+        <div id="customer_results_box" class="ha-search-results"></div>
+    </div>
+</div>
+
+    <!-- Customer Input (Quotation Mode) -->
+    <div class="ha-input-wrapper" id="customerInputWrapper" style="display: none;">
+        <input 
+            id="customerInputNow" 
+            type="text" 
+            class="form-control ha-enhanced-select" 
+            placeholder="Selected Customer" 
+            readonly
+        >
+    </div>
+</div>
+
             <div class="ha-form-group-inline">
                 <label for="customer">
                     <i class="fas fa-user"></i>
@@ -96,17 +115,22 @@
                 </div>
             </div>
 
-            <div style="position:relative; width:300px;">
-                <input id="customer_search" type="text" placeholder="Search Customer…">
-                <div id="customer_results_box"></div>
-            </div>
-
-
-            
-            <div style="position:relative; width:250px;">
-                <input id="quotation_search" type="text" placeholder="Search Quotation…">
-                <div id="results_box"></div>
-            </div>
+ <label for="quotatoon" id="quot-label">
+        <i class="fas fa-user"></i>
+        Quotation
+    </label>    
+     <!-- Quotation Search Input & Results -->
+<div class="ha-input-wrapper" id="quotationInpsutWrapper">
+    <div style="position: relative; width: 250px;">
+        <input 
+            id="quotation_search" 
+            type="text" 
+            class="form-control" 
+            placeholder="Search Quotation…"
+        >
+        <div id="results_box" class="ha-search-results"></div>
+    </div>
+</div>
 
 
 <div class="ha-form-group-inline">

@@ -176,8 +176,6 @@ def get_invoice_json(invoice_name):
         except Exception as e:
             frappe.throw("Error generating invoice JSON: {0}".format(str(e)))
 
-
-
 @frappe.whitelist()
 def get_item_price_by_simple_code(simple_code, price_list="Standard Selling"):
     """
@@ -281,7 +279,6 @@ def get_item_id(simple_code):
     else:
         return {"error": f"No item found for simple code {simple_code}"}
 
-
 @frappe.whitelist()
 def search_quotations(search=""):
     filters = {}
@@ -297,11 +294,9 @@ def search_quotations(search=""):
         limit=10
     )
 
-
 @frappe.whitelist()
 def get_quotation(name):
     doc = frappe.get_doc("Quotation", name)
-    
     # return quotation + items
     return {
         "name": doc.name,
@@ -332,3 +327,38 @@ def search_customers(search=""):
         order_by="creation desc",
         limit=10
     )
+
+@frappe.whitelist()
+def get_user_selling_mode(user):
+    """
+    Load HA POS Setting (SETTINGS-01)
+    Find the row in user_table_selling_mode where user = given user
+    Return the mode field
+    """
+    try:
+        default_customer = None
+        doc = frappe.get_doc("HA POS Setting", "SETTINGS-01")
+        for row in doc.user_table_settin:
+            if row.user == user:
+                default_customer=row.customer
+            
+
+
+        for row in doc.user_table_selling_mode:
+            if row.user == user:
+                return {
+                    "user": user,
+                    "mode": row.mode,
+                    "default_customer": default_customer
+                }
+
+        # If no row found
+        return {
+            "user": user,
+            "mode": None,
+            "error": "User not found in table"
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "get_user_selling_mode error")
+        return {"error": str(e)}

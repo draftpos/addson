@@ -282,6 +282,43 @@ input.addEventListener("input", () => {
     timeout = setTimeout(() => searchQuotation(txt), 300);
 });
 
+frappe.ready(function () {
+    // document.getElementById("customerInputWrapper").style.display = "block";
+    frappe.call({
+        
+        method: "havano_pos_addson.www.search.get_user_selling_mode",
+        args: { user: frappe.session.user},
+        callback(r) {
+
+            if (r.message?.mode === "Quotation") {
+                enableSellingMode();
+            } else {
+                enableQuotationMode();
+            }
+            console.log("Selling mode:", "{{ frappe.session.user }}");
+            document.getElementById("customerInputNow").value =  r.message.default_customer;
+            document.getElementById("selling-mode").innerText =  r.message.mode; 
+            document.getElementById("payment_bttn").innerText =  r.message.mode;
+            
+        }
+    });
+});
+// document.addEventListener("DOMContentLoaded", function () {
+//     document.getElementById("customerInputWrapper").style.display = "block";
+// });
+
+function enableQuotationMode() {
+    document.getElementById("customerSelectWrapper").style.display = "none";
+    document.getElementById("customerInputWrapper").style.display = "block";
+}
+
+function enableSellingMode() {
+    document.getElementById("customerInputWrapper").style.display = "none";
+    document.getElementById("customerSelectWrapper").style.display = "block";
+    document.getElementById("quotationInpsutWrapper").style.display = "none";
+    document.getElementById("quot-label").style.display = "none";
+}
+
 
 function searchQuotation(text) {
     frappe.call({
@@ -335,6 +372,9 @@ function handleQuotationClick(quotation) {
 
             // Just log the full quotation object
             console.log("Full quotation:", q);
+            console.log("Quotation name:", q.customer_name);
+            const customerSelect = document.getElementById("customerInput");
+            customerInputNow.value =  q.customer_name;
             console.log("Items:", q.items);
             populateItemsFromList(q.items);
         }
