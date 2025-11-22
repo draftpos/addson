@@ -362,3 +362,31 @@ def get_user_selling_mode(user):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_user_selling_mode error")
         return {"error": str(e)}
+
+
+@frappe.whitelist(allow_guest=False)
+def create_customer(customer_name, email=None, phone=None, address=None):
+    try:
+        # Check if customer already exists
+        existing = frappe.get_all("Customer", filters={"customer_name": customer_name})
+        if existing:
+            return {"success": False, "message": "Customer already exists."}
+
+        # Create new Customer
+        customer = frappe.get_doc({
+            "doctype": "Customer",
+            "customer_name": customer_name,
+            "email_id": email,
+            "phone": phone,
+            "customer_type": "Individual",
+            "territory": "All Territories",
+            "address": address
+        })
+        customer.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {"success": True, "message": "Customer created successfully."}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Customer Error")
+        return {"success": False, "message": str(e)}

@@ -1,6 +1,8 @@
 // Initialize the POS when DOM is loaded
 document.addEventListener('DOMContentLoaded', initPOS);
 
+
+
 function initPOS() {
     cacheDOM();
     bindEvents();
@@ -315,8 +317,8 @@ function submitQuotation() {
     frappe.call({
         method: "havano_pos_addson.www.search.create_quotation",
         args: {
-            customer: "Walking",
-            company: "Boring",
+            customer: document.getElementById("customer_search").value,
+            company:  document.getElementById("default_company").innerText,
             items: items
         },
         callback: function(r) {

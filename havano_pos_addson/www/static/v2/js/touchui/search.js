@@ -504,7 +504,9 @@ function searchCustomer(text) {
                 createBtn.textContent = "➕ Create Customer";
                 createBtn.classList.add("create_button");
                 createBtn.onclick = () => {
+                    openCreateCustomerDialog();
                     console.log("Create customer clicked");
+
                     // You can call your create customer function here
                 };
                 customerResults.appendChild(createBtn);
@@ -534,7 +536,8 @@ function searchCustomer(text) {
 
             createBtn.classList.add("create_button");
             createBtn.onclick = () => {
-                console.log("Create customer clicked");
+                console.log("Create customer clickedd");
+                document.getElementById("vusi").click()
             };
             customerResults.appendChild(createBtn);
 
@@ -553,4 +556,83 @@ document.addEventListener("click", e => {
     if (!results.contains(e.target) && e.target !== input) {
         results.style.display = "none";
     }
+});
+// Define dialog in global scope
+// Include SweetAlert in your HTML
+// <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+// Then use:
+function openCreateCustomerDialog() {
+    Swal.fire({
+        title: 'Create New Customer',
+        html: `
+            <input id="customer_name" class="swal2-input" placeholder="Customer Name">
+            <input id="email" class="swal2-input" placeholder="Email">
+            <input id="phone" class="swal2-input" placeholder="Phone">
+            <input id="address" class="swal2-input" placeholder="Address">
+        `,
+        focusConfirm: false,
+        preConfirm: () => {
+            return {
+                customer_name: document.getElementById('customer_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value
+            }
+        }
+    }).then((result) => {
+        if (result.value) {
+            console.log("Creating customer:", result.value);
+            frappe.call({
+                method: "havano_pos_addson.www.search.create_customer",
+                args: result.value,
+                callback(r) {
+                    if (r.message && r.message.success) {
+                        frappe.msgprint("Customer created successfully!");
+                        document.getElementById("customer_search").value = result.value.customer_name;
+                    } else {
+                        frappe.msgprint("Failed to create customer.");
+                    }
+                }
+            });
+        }
+    });
+}
+document.getElementById("saveCustomerBtn").addEventListener("click", () => {
+    const customerData = {
+        customer_name: document.getElementById("customer_name").value,
+        email: document.getElementById("customer_email").value,
+        phone: document.getElementById("customer_phone").value,
+        address: document.getElementById("customer_address").value
+    };
+
+    console.log("Creating customer:", customerData);
+
+    frappe.call({
+        method: "havano_pos_addson.www.search.create_customer",
+        args: customerData,
+        callback: function(r) {
+            if (r.message && r.message.success) {
+                frappe.msgprint(r.message.message || "Customer created successfully!");
+                // Optionally populate your search input
+                document.getElementById("customer_search").value = customerData.customer_name;
+
+                // Close the modal
+                $('#exampleModal').modal('hide');
+
+                // Clear input fields
+                document.getElementById("customer_name").value = "";
+                document.getElementById("customer_email").value = "";
+                document.getElementById("customer_phone").value = "";
+                document.getElementById("customer_address").value = "";
+
+            } else {
+                frappe.msgprint(r.message?.message || "Failed to create customer.");
+            }
+        },
+        error: function(err) {
+            console.error("Failed to create customer:", err);
+            frappe.msgprint("Something went wrong!");
+        }
+    });
 });
